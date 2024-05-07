@@ -15,7 +15,7 @@
 
 ### Libraries
 library(librarian)
-librarian::shelf(tidyverse, data.table, future, furrr)
+librarian::shelf(tidyverse, data.table, future, furrr, plotly)
 
 ### Read in Data - Apologies for the absolute path!
 
@@ -125,50 +125,109 @@ mt_c02 %>% distinct(Year) %>% summary()
 # 3rd Qu.:1953  
 # Max.   :2021
 
+# Any 'Country' level stats to not consider? 
+mt_c02 %>% distinct(Country) %>% View()
+# International Transport, Global, Kuwait Oil Fires.
 
-# Country Level Summary Statistics
-sum_stats_country <- mt_c02 %>%
-  mutate( 
-    # World level stats
-    world_emissions = sum(Total, na.rm = T),
-    max_world_emissions = max(Total, na.rm = T),
-    world_coal_emissions = sum(Coal, na.rm = T),
-    world_oil_emissions = sum(Oil, na.rm = T),
-    world_gas_emissions = sum(Gas, na.rm = T),
-    world_cement_emissions = sum(Cement, na.rm = T),
-    world_other_emissions = sum(Other, na.rm = T),
-    world_flaring_emissions = sum(Flaring, na.rm = T)
-  ) %>%
-  # group_by(Year) %>% # Year level stats
-  # mutate(
-  #   # number of countries with emissions
-  #   n_countries_w_emissions_data = sum(Total > 0, na.rm = T),
-  #   max_year_emissions = max(Total, na.rm = T),
-  #   year_perc_coal,
-  #   year_perc_oil,
-  #   year_perc_gas,
-  #   year_perc_cement,
-  #   year_perc_other
-  # )
-  # ungroup() %>%
-  group_by(Country) %>% # Country level stats
+# Adjust Japan emissions to include Ryukyu Islands emissions
+# for the 1952-1972 time period they were reported separately.
+
+japan_adj <- mt_c02 %>%
+  filter(Country %in% c('Ryukyu Islands', 'Japan')) %>%
+  mutate(Country = ifelse(Country == 'Ryukyu Islands', 'Japan', Country)) %>%
+  group_by(Country, Year) %>%
+  reframe(Country, 
+          `ISO 3166-1 alpha-3`,
+          Year,
+          Total = sum(Total, na.rm = T), 
+          Coal = sum(Coal, na.rm = T),
+          Oil = sum(Oil, na.rm = T),
+          Gas = sum(Gas, na.rm = T),
+          Cement = sum(Cement, na.rm = T),
+          Flaring = sum(Flaring, na.rm = T),
+          Other = sum(Other, na.rm = T),
+          `Per Capita`
+         )
+
+# Update Country level emissions with Japan adjustment and remove non-countries
+mt_c02_adj <- mt_c02 %>%
+  filter(!Country %in% c('International Transport', 'Global', 'Kuwaiti Oil Fires', 
+                         'Ryukyu Islands', 'Japan')) %>%
+  bind_rows(japan_adj)
+
+# Df for plotting Total Emissions by Country Over Time
+plot_df <- mt_c02_adj %>%
+  group_by(Country) %>%
+  mutate(tot_emissions = sum(Total, na.rm = T)) %>%
+  ungroup() %>%
   transmute(
-    tot_emissions = sum(Total),
-    max_emissions = max(Total),
-    # slope emissions?
-    years_of_data = sum(Total > 0)
-    # Other calculated stats
+    Country,
+    Year, 
+    Total, 
+    tot_emissions,
+    # Calculate and Create variables for Quartiles
+    upper_3rd = quantile(tot_emissions, prob = .75, na.rm = T) %>% unname(),
+    upper_2nd = quantile(tot_emissions, prob = .5, na.rm = T) %>% unname(),
+    upper_1st = quantile(tot_emissions, prob = .25, na.rm = T) %>% unname(),
+    country_emissions_quartile = case_when(
+      tot_emissions <= upper_1st ~ 1,
+      tot_emissions <= upper_2nd ~ 2,
+      tot_emissions <= upper_3rd ~ 3,
+      tot_emissions > upper_3rd ~ 4,
+      TRUE ~ NA)
   )
-
-  
   
 ### Visualizations
 
-# Total Emissions by Country Over Time
-
-
+# Total Emissions by Country over time
+ggplot(plot_df %>% filter(Year >= 1900, country_emissions_quartile == 4) , 
+       aes(x = Year, y = Total, color = Country)) +
+  geom_line(show.legend = FALSE) + 
+  #facet_wrap(~country_emissions_quartile,scales = 'free_y') + 
+  scale_y_continuous(labels = scales::comma, n.breaks = 7) +
+  scale_x_continuous(expand = c(0.01, 0)) + 
+  theme_minimal() + 
+  theme(axis.text.y = element_text(angle = 37)) +
+  labs(
+    title = 'C02 Emissions by Countries over Time',
+    subtitle = 'Year 1900 Onwards; top 25% of C02 Emitting Countries',
+    y = 'Total: C02 Emissions (Units)'
+  )
   
+  
+# ggplotly()
+# 
+# style(country_emissions_over_time, showlegend = FALSE)
+  
+  # facet grid by quartile?
 
+### World level stats 
+  # mutate( 
+  #   # World level stats
+  #   world_emissions = sum(Total, na.rm = T),
+  #   max_world_emissions = max(Total, na.rm = T),
+  #   world_coal_emissions = sum(Coal, na.rm = T),
+  #   world_oil_emissions = sum(Oil, na.rm = T),
+  #   world_gas_emissions = sum(Gas, na.rm = T),
+  #   world_cement_emissions = sum(Cement, na.rm = T),
+  #   world_other_emissions = sum(Other, na.rm = T),
+  #   world_flaring_emissions = sum(Flaring, na.rm = T)
+  # ) %>%
+
+### Year level stats 
+  # group_by(Year) %>% # Year level stats
+  #   mutate(
+  #     n_countries_w_emissions_data = sum(Total > 0, na.rm = T),
+  #     max_year_emissions = max(Total, na.rm = T),
+  #     # avg coal production?
+  #     year_total_emissions = sum(Total, na.rm = T),
+  #     year_perc_coal = round(sum(Coal, na.rm = T) * 100 / year_total_emissions, 2),
+  #     year_perc_oil = round(sum(Oil, na.rm = T) * 100 / year_total_emissions, 2),
+  #     year_perc_gas = round(sum(Gas, na.rm = T) * 100 / year_total_emissions, 2),
+  #     year_perc_cement = round(sum(Cement, na.rm = T) * 100 / year_total_emissions, 2),
+  #     year_perc_other = round(sum(Other, na.rm = T) * 100 / year_total_emissions, 2)
+  #   ) %>%
+  
 # Modeling ----------------------------------------------------------------
 
 # Time Series
