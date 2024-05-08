@@ -15,12 +15,13 @@
 
 ### Libraries
 library(librarian)
-librarian::shelf(tidyverse, data.table, future, furrr, plotly)
+librarian::shelf(tidyverse, data.table, future, furrr, plotly, viridis, svglite)
 
 ### Read in Data - Apologies for the absolute path!
 
 # Country level Emissions - primary dataset for analysis
-mt_c02 <- fread('C:/Users/WulfN/Python Projects/datasets/Emissions/GCB2022v27_MtCO2_flat.csv')
+mt_c02 <- fread('C:/Users/WulfN/Python Projects/datasets/Emissions/GCB2022v27_MtCO2_flat.csv') %>%
+  rename(Country_Code = `ISO 3166-1 alpha-3`)
 
 # Per Capita Emissions
 per_capita <- fread('C:/Users/WulfN/Python Projects/datasets/Emissions/GCB2022v27_percapita_flat.csv')
@@ -137,7 +138,7 @@ japan_adj <- mt_c02 %>%
   mutate(Country = ifelse(Country == 'Ryukyu Islands', 'Japan', Country)) %>%
   group_by(Country, Year) %>%
   reframe(Country, 
-          `ISO 3166-1 alpha-3`,
+          Country_Code = 'JPN',
           Year,
           Total = sum(Total, na.rm = T), 
           Coal = sum(Coal, na.rm = T),
@@ -152,10 +153,27 @@ japan_adj <- mt_c02 %>%
 # Update Country level emissions with Japan adjustment and remove non-countries
 mt_c02_adj <- mt_c02 %>%
   filter(!Country %in% c('International Transport', 'Global', 'Kuwaiti Oil Fires', 
-                         'Ryukyu Islands', 'Japan')) %>%
-  bind_rows(japan_adj)
+                         'Ryukyu Islands', 'Japan')
+         ) %>%
+  bind_rows(japan_adj) %>% 
+  filter(!Total == 0) # Remove 0 Total emission observations
 
-# Df for plotting Total Emissions by Country Over Time
+# Some Countries only have pockets of emissions data (Ex: Antarctica 1998-2007)
+
+# Different in number of distinct country obs and country codes - why?
+empty_country_code <- mt_c02_adj %>% filter(Country_Code == '') 
+empty_country_code %>% distinct(Country)
+#                     Country
+# 1: French Equatorial Africa
+# 2:       French West Africa
+# 3:          Leeward Islands
+# 4:  Pacific Islands (Palau)
+# *** All are island nations
+# * Country Code is not a needed feature
+
+# Visualizations ----------------------------------------------------------
+
+## Df for plotting Total Emissions by Country Over Time
 plot_df <- mt_c02_adj %>%
   group_by(Country) %>%
   mutate(tot_emissions = sum(Total, na.rm = T)) %>%
@@ -176,58 +194,118 @@ plot_df <- mt_c02_adj %>%
       tot_emissions > upper_3rd ~ 4,
       TRUE ~ NA)
   )
-  
-### Visualizations
 
-# Total Emissions by Country over time
-ggplot(plot_df %>% filter(Year >= 1900, country_emissions_quartile == 4) , 
+## Total Emissions by Country Over Time
+    # Perhaps this is only useful as a plotly graph
+ggplot(plot_df %>% filter(Year >= 1900), #country_emissions_quartile == 4) , 
        aes(x = Year, y = Total, color = Country)) +
   geom_line(show.legend = FALSE) + 
-  #facet_wrap(~country_emissions_quartile,scales = 'free_y') + 
+  facet_wrap(~country_emissions_quartile,scales = 'free_y') + 
   scale_y_continuous(labels = scales::comma, n.breaks = 7) +
   scale_x_continuous(expand = c(0.01, 0)) + 
+  scale_color_viridis_d(option = 'E') +
   theme_minimal() + 
   theme(axis.text.y = element_text(angle = 37)) +
   labs(
-    title = 'C02 Emissions by Countries over Time',
-    subtitle = 'Year 1900 Onwards; top 25% of C02 Emitting Countries',
-    y = 'Total: C02 Emissions (Units)'
+    title = 'C02 Emissions by Country over Time',
+    subtitle = 'Year 1900 Onwards',
+    y = 'Total: C02 Emissions' # Unsure the units, likely Kilotons according to wikipedia
   )
-  
-  
-# ggplotly()
-# 
-# style(country_emissions_over_time, showlegend = FALSE)
-  
-  # facet grid by quartile?
 
-### World level stats 
-  # mutate( 
-  #   # World level stats
-  #   world_emissions = sum(Total, na.rm = T),
-  #   max_world_emissions = max(Total, na.rm = T),
-  #   world_coal_emissions = sum(Coal, na.rm = T),
-  #   world_oil_emissions = sum(Oil, na.rm = T),
-  #   world_gas_emissions = sum(Gas, na.rm = T),
-  #   world_cement_emissions = sum(Cement, na.rm = T),
-  #   world_other_emissions = sum(Other, na.rm = T),
-  #   world_flaring_emissions = sum(Flaring, na.rm = T)
-  # ) %>%
-
-### Year level stats 
-  # group_by(Year) %>% # Year level stats
-  #   mutate(
-  #     n_countries_w_emissions_data = sum(Total > 0, na.rm = T),
-  #     max_year_emissions = max(Total, na.rm = T),
-  #     # avg coal production?
-  #     year_total_emissions = sum(Total, na.rm = T),
-  #     year_perc_coal = round(sum(Coal, na.rm = T) * 100 / year_total_emissions, 2),
-  #     year_perc_oil = round(sum(Oil, na.rm = T) * 100 / year_total_emissions, 2),
-  #     year_perc_gas = round(sum(Gas, na.rm = T) * 100 / year_total_emissions, 2),
-  #     year_perc_cement = round(sum(Cement, na.rm = T) * 100 / year_total_emissions, 2),
-  #     year_perc_other = round(sum(Other, na.rm = T) * 100 / year_total_emissions, 2)
-  #   ) %>%
+# Countries that emit the most C02 generally began emitting before the 1950s
   
+## Coal, Oil, Gas, Cement, and Other as percentage of Total World Emissions over time
+plot_df_2 <- mt_c02_adj %>%
+  group_by(Year) %>%
+  transmute(
+    Year,
+    `Global Total` = sum(Total, na.rm = T),
+    `Global Coal` = sum(Coal, na.rm = T),
+    `Global Oil` = sum(Oil, na.rm = T),
+    `Global Gas` = sum(Gas, na.rm = T),
+    `Global Cement` = sum(Cement, na.rm = T),
+    `Global Flaring` = sum(Flaring, na.rm = T),
+    `Global Other` = sum(Other, na.rm = T),
+    coal = round(`Global Coal` * 100/ `Global Total`, 2),
+    oil = round(`Global Oil` * 100 / `Global Total`, 2),
+    gas = round(`Global Gas` * 100 / `Global Total`, 2),
+    cement = round(`Global Cement` * 100 / `Global Total`, 2),
+    flaring = round(`Global Flaring` * 100 / `Global Total`, 2),
+    other = round(`Global Other` * 100 / `Global Total`, 2)
+  ) %>% 
+  distinct(Year, .keep_all = T) %>%
+  pivot_longer(
+    cols = c('coal', 'oil', 'gas', 'cement', 'flaring', 'other'),
+    names_to = 'Emissions Category',
+    values_to = 'percent'
+    ) 
+
+## Area plot of global emissions percent by category
+plot_2 <- ggplot(plot_df_2 %>% filter(Year >= 1850), 
+                 aes(x = Year, 
+                     y = percent, 
+                     fill = `Emissions Category`)) + 
+  scale_x_continuous(expand = c(0.01, 0), n.breaks = 8) + 
+  scale_y_continuous(expand = c(0, 0)) + 
+  geom_area(size = 1, colour = "darkgrey", position = 'stack') + 
+  scale_fill_viridis(discrete = T, option = 'E') +
+  theme_minimal() + 
+  labs(
+    title = 'Global Emissions Percentage by Category',
+    subtitle = 'Prior to 1850 Nearly All Emissions Were From Coal',
+    x = 'Year',
+    y = 'Percent'
+  )
+
+ggsave('global_percent_emissions_by_cat.svg', plot = plot_2,
+       path = 'C:/Users/WulfN/R Projects/Emissions-Data-Analysis')
+  
+# Oil and Gas has contributed a greater percentage to Global emissions up through
+# The 1970s, but has plateaued or is decreasing since then. 
+
+## Area plot of absolute global emissions over time
+plot_df_3 <- plot_df_2 %>%
+  distinct(Year, .keep_all = T) %>%
+  select(-c('Emissions Category', 'percent'),
+         Coal = `Global Coal`,
+         Oil = `Global Oil`,
+         Gas = `Global Gas`,
+         Cement = `Global Cement`,
+         Flaring = `Global Flaring`,
+         Other = `Global Other`
+  ) %>%
+  pivot_longer(
+    cols = c('Coal', 'Oil', 'Gas', 'Cement',
+             'Flaring', 'Other'),
+    names_to = 'Global Emissions Category',
+    values_to = 'Total Emissions'
+  ) 
+
+plot_3 <- ggplot(plot_df_3 %>% filter(Year >= 1850), 
+                 aes(x = Year, 
+                     y = `Total Emissions`/ 1000, # For cleaner y-axis
+                     fill = `Global Emissions Category`)) + 
+  scale_x_continuous(expand = c(0.01, 0), n.breaks = 8) + 
+  scale_y_continuous(labels = scales::comma, expand = c(0, .1), n.breaks = 7) + 
+  geom_area(size = 1, colour = "darkgrey", position = 'stack') + 
+  scale_fill_viridis(discrete = T, option = 'E') +
+  theme_minimal() + 
+  theme(axis.title.y = element_text(margin = margin(r = 12, unit = "pt")),
+        legend.position = c(.14, .736)) +
+  labs(
+    title = 'Global Total Emissions by Category',
+    subtitle = 'Omitting Years Prior to 1850',
+    x = 'Year',
+    y = 'Total Emissions (Billion Tonnes)'
+  )
+
+ggsave('global_total_emissions_by_cat.svg', plot = plot_3,
+       path = 'C:/Users/WulfN/R Projects/Emissions-Data-Analysis')
+
+  # Total Emissions has steadily risen, but after 2000 has arguably plateaued.
+# Global Gas emissions has steadily increased, despite the total emissions trend. 
+# Tonnes is equivalent to 1,000 Kilograms
+
 # Modeling ----------------------------------------------------------------
 
 # Time Series
@@ -237,6 +315,8 @@ ggplot(plot_df %>% filter(Year >= 1900, country_emissions_quartile == 4) ,
 # Results + Visualizations ------------------------------------------------
 
 # This may be completed in the EDA section
-# Chorographs! 
-  # - leaflet
+# Choreographs! 
+  # - Leaflet
+  # - Different c02 emissions types?
+  # - Show changes over time, or just most recent year? 
 
