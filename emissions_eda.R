@@ -15,7 +15,7 @@
 
 ### Libraries
 library(librarian)
-librarian::shelf(tidyverse, data.table, future, furrr, plotly, viridis)
+librarian::shelf(tidyverse, data.table, future, furrr, plotly, viridis, svglite)
 
 ### Read in Data - Apologies for the absolute path!
 
@@ -240,26 +240,11 @@ plot_df_2 <- mt_c02_adj %>%
     values_to = 'percent'
     ) 
 
-plot_df_3 <- plot_df_2 %>%
-  distinct(Year, .keep_all = T) %>%
-  select(-c('Emissions Category', 'percent'),
-         Coal = `Global Coal`,
-         Oil = `Global Oil`,
-         Gas = `Global Gas`,
-         Cement = `Global Cement`,
-         Flaring = `Global Flaring`,
-         Other = `Global Other`
-         ) %>%
-  pivot_longer(
-    cols = c('Coal', 'Oil', 'Gas', 'Cement',
-             'Flaring', 'Other'),
-    names_to = 'Global Emissions Category',
-    values_to = 'Total Emissions'
-  ) 
-
 ## Area plot of global emissions percent by category
-ggplot(plot_df_2 %>% filter(Year >= 1850), aes(x = Year, y = percent, 
-                      fill = `Emissions Category`)) + 
+plot_2 <- ggplot(plot_df_2 %>% filter(Year >= 1850), 
+                 aes(x = Year, 
+                     y = percent, 
+                     fill = `Emissions Category`)) + 
   scale_x_continuous(expand = c(0.01, 0), n.breaks = 8) + 
   scale_y_continuous(expand = c(0, 0)) + 
   geom_area(size = 1, colour = "darkgrey", position = 'stack') + 
@@ -271,36 +256,55 @@ ggplot(plot_df_2 %>% filter(Year >= 1850), aes(x = Year, y = percent,
     x = 'Year',
     y = 'Percent'
   )
+
+ggsave('global_percent_emissions_by_cat.svg', plot = plot_2,
+       path = 'C:/Users/WulfN/R Projects/Emissions-Data-Analysis')
   
 # Oil and Gas has contributed a greater percentage to Global emissions up through
 # The 1970s, but has plateaued or is decreasing since then. 
 
 ## Area plot of absolute global emissions over time
-ggplot(plot_df_3 %>% filter(Year >= 1850), 
-       aes(x = Year, 
-           y = `Total Emissions`/ 1000, # For cleaner y-axis
-           fill = `Global Emissions Category`)) + 
+plot_df_3 <- plot_df_2 %>%
+  distinct(Year, .keep_all = T) %>%
+  select(-c('Emissions Category', 'percent'),
+         Coal = `Global Coal`,
+         Oil = `Global Oil`,
+         Gas = `Global Gas`,
+         Cement = `Global Cement`,
+         Flaring = `Global Flaring`,
+         Other = `Global Other`
+  ) %>%
+  pivot_longer(
+    cols = c('Coal', 'Oil', 'Gas', 'Cement',
+             'Flaring', 'Other'),
+    names_to = 'Global Emissions Category',
+    values_to = 'Total Emissions'
+  ) 
+
+plot_3 <- ggplot(plot_df_3 %>% filter(Year >= 1850), 
+                 aes(x = Year, 
+                     y = `Total Emissions`/ 1000, # For cleaner y-axis
+                     fill = `Global Emissions Category`)) + 
   scale_x_continuous(expand = c(0.01, 0), n.breaks = 8) + 
   scale_y_continuous(labels = scales::comma, expand = c(0, .1), n.breaks = 7) + 
   geom_area(size = 1, colour = "darkgrey", position = 'stack') + 
   scale_fill_viridis(discrete = T, option = 'E') +
   theme_minimal() + 
   theme(axis.title.y = element_text(margin = margin(r = 12, unit = "pt")),
-        legend.position = c(.115, .739)) +
+        legend.position = c(.14, .736)) +
   labs(
     title = 'Global Total Emissions by Category',
     subtitle = 'Omitting Years Prior to 1850',
     x = 'Year',
     y = 'Total Emissions (Billion Tonnes)'
-    #fill = 'Global Emissions \nCategory' 
   )
+
+ggsave('global_total_emissions_by_cat.svg', plot = plot_3,
+       path = 'C:/Users/WulfN/R Projects/Emissions-Data-Analysis')
 
   # Total Emissions has steadily risen, but after 2000 has arguably plateaued.
 # Global Gas emissions has steadily increased, despite the total emissions trend. 
 # Tonnes is equivalent to 1,000 Kilograms
-
-
-
 
 # Modeling ----------------------------------------------------------------
 
@@ -311,6 +315,8 @@ ggplot(plot_df_3 %>% filter(Year >= 1850),
 # Results + Visualizations ------------------------------------------------
 
 # This may be completed in the EDA section
-# Chorographs! 
-  # - leaflet
+# Choreographs! 
+  # - Leaflet
+  # - Different c02 emissions types?
+  # - Show changes over time, or just most recent year? 
 
