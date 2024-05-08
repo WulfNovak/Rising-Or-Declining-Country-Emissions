@@ -1,3 +1,12 @@
-# Data Analysis on Emissions data around the world
+# Data Analysis on World Emissions Data
 
-Currently completing EDA, however, analysis will likely include Time Series Analysis
+The following is underway:
+* Cleaning Dataframe
+* EDA
+* Analysis of emissions categories
+* Visualizations
+
+Possible future work:
+* Identify countries with decline in emissions
+* Choreographs
+* Time Series
