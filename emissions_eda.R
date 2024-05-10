@@ -3,8 +3,8 @@
 #
 # Project: Emissions based - Will decide after EDA
 #
-# Data: https://www.kaggle.com/datasets/thedevastator/
-#       global-fossil-co2-emissions-by-country-2002-2022
+# Data: https://zenodo.org/records/7215364
+#       Convened by: Robbie M. Andrew and Glen Peters
 #
 # Date: 5/3/2024
 #
@@ -15,19 +15,19 @@
 
 ### Libraries
 library(librarian)
-librarian::shelf(tidyverse, data.table, future, furrr, plotly, viridis, svglite)
+shelf(tidyverse, data.table, future, furrr, plotly, viridis, svglite)
 
-### Read in Data - Apologies for the absolute path!
+### Read in Data 
 
 # Country level Emissions - primary dataset for analysis
-mt_c02 <- fread('C:/Users/WulfN/Python Projects/datasets/Emissions/GCB2022v27_MtCO2_flat.csv') %>%
+mt_c02 <- fread('./datasets/Emissions/GCB2023v43_MtCO2_flat.csv') %>%
   rename(Country_Code = `ISO 3166-1 alpha-3`)
 
 # Per Capita Emissions
-per_capita <- fread('C:/Users/WulfN/Python Projects/datasets/Emissions/GCB2022v27_percapita_flat.csv')
+per_capita <- fread('./datasets/Emissions/GCB2023v43_percapita_flat.csv')
 
 # Sources of data 
-sources <- fread('C:/Users/WulfN/Python Projects/datasets/Emissions/GCB2022v27_sources_flat.csv') %>%
+sources <- fread('./datasets/Emissions/GCB2023v43_sources_flat.csv') %>%
   # Replace '[NONE]' entries with NAs
   map_df(., ~case_when(. == "[NONE]" ~ NA, 
                        TRUE ~ .))
@@ -147,8 +147,9 @@ japan_adj <- mt_c02 %>%
           Cement = sum(Cement, na.rm = T),
           Flaring = sum(Flaring, na.rm = T),
           Other = sum(Other, na.rm = T),
-          `Per Capita`
-         )
+          `Per Capita` = sum(`Per Capita`, na.rm = T)
+         ) %>%
+  distinct(Country, Year, Total, .keep_all = T)
 
 # Update Country level emissions with Japan adjustment and remove non-countries
 mt_c02_adj <- mt_c02 %>%
@@ -170,6 +171,8 @@ empty_country_code %>% distinct(Country)
 # 4:  Pacific Islands (Palau)
 # *** All are island nations
 # * Country Code is not a needed feature
+
+
 
 # Visualizations ----------------------------------------------------------
 
@@ -193,7 +196,8 @@ plot_df <- mt_c02_adj %>%
       tot_emissions <= upper_3rd ~ 3,
       tot_emissions > upper_3rd ~ 4,
       TRUE ~ NA)
-  )
+  ) %>%
+  select(-c(starts_with('upper'), tot_emissions))
 
 ## Total Emissions by Country Over Time
     # Perhaps this is only useful as a plotly graph
@@ -209,7 +213,7 @@ ggplot(plot_df %>% filter(Year >= 1900), #country_emissions_quartile == 4) ,
   labs(
     title = 'C02 Emissions by Country over Time',
     subtitle = 'Year 1900 Onwards',
-    y = 'Total: C02 Emissions' # Unsure the units, likely Kilotons according to wikipedia
+    y = 'Total C02 Emissions'
   )
 
 # Countries that emit the most C02 generally began emitting before the 1950s
@@ -302,9 +306,52 @@ plot_3 <- ggplot(plot_df_3 %>% filter(Year >= 1850),
 ggsave('global_total_emissions_by_cat.svg', plot = plot_3,
        path = 'C:/Users/WulfN/R Projects/Emissions-Data-Analysis')
 
-  # Total Emissions has steadily risen, but after 2000 has arguably plateaued.
+# Total Emissions has steadily risen, but has arguably plateaued after 2000.
 # Global Gas emissions has steadily increased, despite the total emissions trend. 
 # Tonnes is equivalent to 1,000 Kilograms
+
+
+# Finding Countries That Successfully Reduced Emissions -------------------
+
+# Definition: Have 3 consecutive years where emissions are less than the max
+
+reduc_emissions_countries <- mt_c02_adj %>%
+  group_by(Country) %>%
+  mutate(
+    max_total_emissions = max(Total, na.rm = T),
+    # indicator for year of max emissions
+    year_of_max_total_emissions = case_when(Total == max_total_emissions ~ 1, 
+                                            TRUE ~ 0),
+    most_recent_year = max(Year, na.rm = T)
+  ) %>%
+  filter(
+    year_of_max_total_emissions == 1,
+    # remove countries whose max emitting year is within past 3 years
+    Year < max(Year, na.rm = T) - 3 
+    ) %>%
+  distinct(Country) %>%
+  unlist(use.names = FALSE)
+
+plot_reduc_emissions_countries <- plot_df %>%
+  filter(Country %in% reduc_emissions_countries)
+
+# Plot of countries with reduction in usage, split into quartiles 
+ggplot(plot_reduc_emissions_countries %>% filter(Year >= 1900, country_emissions_quartile == 4), 
+       aes(x = Year, y = Total, color = Country)) +
+  geom_line(show.legend = FALSE) + 
+  facet_wrap(~country_emissions_quartile,scales = 'free_y') + 
+  scale_y_continuous(labels = scales::comma, n.breaks = 7) +
+  scale_x_continuous(expand = c(0.01, 0)) + 
+  scale_color_viridis_d(option = 'E') +
+  theme_minimal() + 
+  theme(axis.text.y = element_text(angle = 37)) +
+  labs(
+    title = 'C02 Emissions by Country over Time',
+    subtitle = 'Year 1900 Onwards',
+    y = 'Total C02 Emissions'
+  )
+
+# Look at countries whose usage has steadily risen
 
 # Modeling ----------------------------------------------------------------
 
