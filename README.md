@@ -1,12 +1,19 @@
 # Data Analysis on World Emissions Data
 
+Project Notes: 
+* For the time being, plots from the emissions_eda script are provided in the 'Plots' folder
+* Categorized development indicators are made available in the 'Data' folder
+* Some thoroughness and reasoning has been excluded to reduce the scope of the project
+
 The following is underway:
 * Cleaning Dataframe
 * EDA
 * Analysis of emissions categories
 * Visualizations
+* Analysis of development indicators
 
 Possible future work:
-* Identify countries with decline in emissions
 * Choreographs
 * Time Series
+* Label and Predict countries that lower emissions given development indicators
+

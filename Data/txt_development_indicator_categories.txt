@@ -1,0 +1,39 @@
+
+Development Indicator Categories
+
+1. Health and Life Expectancy:
+	• Indicators related to health, healthcare access, and overall life expectancy.
+	• Examples: Life expectancy at birth, maternal mortality ratio, prevalence of HIV, etc.
+2. Education and Literacy:
+	• Indicators related to educational attainment, literacy rates, and school enrollment.
+	• Examples: Literacy rate, school enrollment, dropout rates, etc.
+3. Economic Performance and Growth:
+	• Indicators that measure economic activities, growth, and overall economic performance.
+	• Examples: GDP, unemployment rate, inflation rate, etc.
+4. Employment and Labor Market:
+	• Indicators related to employment, labor force participation, and job market conditions.
+	• Examples: Labor force participation rate, employment rate, youth unemployment, etc.
+5. Income and Poverty:
+	• Indicators that measure income distribution, poverty levels, and wealth disparities.
+	• Examples: Poverty headcount ratio, GINI index, average income, etc.
+6. Infrastructure and Technology:
+	• Indicators related to the development of infrastructure and access to technology.
+	• Examples: Access to electricity, internet penetration, transportation infrastructure, etc.
+7. Environmental Sustainability:
+	• Indicators that measure the impact on and preservation of the environment.
+	• Examples: CO2 emissions, deforestation rates, renewable energy consumption, etc.
+8. Governance and Institutional Quality:
+	• Indicators related to governance, institutional quality, and political stability.
+	• Examples: Corruption perception index, rule of law, government effectiveness, etc.
+9. Social Inclusion and Gender Equality:
+	• Indicators that measure social inclusion and gender equality.
+	• Examples: Gender parity index, social inclusion policies, women in parliament, etc.
+10. Public Services and Safety:
+	• Indicators related to the quality and access to public services and safety.
+	• Examples: Access to clean water, sanitation services, crime rates, etc.
+11. Agriculture and Food Security:
+	• Indicators related to agricultural productivity and food security.
+	• Examples: Agricultural output, food security index, malnutrition rates, etc.
+12. Trade and Investment:
+	• Indicators that measure trade performance and investment climate.
+	• Examples: Trade balance, foreign direct investment, export/import rates, etc.

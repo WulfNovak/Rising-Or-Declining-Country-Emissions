@@ -3,34 +3,44 @@
 #
 # Project: Emissions based - Will decide after EDA
 #
-# Data: https://zenodo.org/records/7215364
+# Data: World Emissions
+#       https://zenodo.org/records/7215364
 #       Convened by: Robbie M. Andrew and Glen Peters
+#
+#       World Development Indicators
+#       https://datacatalog.worldbank.org/search/dataset/0037712/World-Development-Indicators
 #
 # Date: 5/3/2024
 #
-# R version 4.2.2 (2022-10-31 ucrt)
+# R version: 4.4.0
 ##################################################################
+# Comments: 
+#
 
 # Setup -------------------------------------------------------------------
 
 ### Libraries
 library(librarian)
-shelf(tidyverse, data.table, future, furrr, plotly, viridis, svglite)
+shelf(tidyverse, data.table, future, furrr, 
+      plotly, viridis, svglite)
+
+options(scipen = 999)
 
 ### Read in Data 
 
-# Country level Emissions - primary dataset for analysis
+## Country level Emissions - primary dataset for analysis
 mt_c02 <- fread('./datasets/Emissions/GCB2023v43_MtCO2_flat.csv') %>%
   rename(Country_Code = `ISO 3166-1 alpha-3`)
 
 # Per Capita Emissions
 per_capita <- fread('./datasets/Emissions/GCB2023v43_percapita_flat.csv')
 
-# Sources of data 
-sources <- fread('./datasets/Emissions/GCB2023v43_sources_flat.csv') %>%
-  # Replace '[NONE]' entries with NAs
-  map_df(., ~case_when(. == "[NONE]" ~ NA, 
-                       TRUE ~ .))
+## World Development Indicators
+wdi_country <- fread('./datasets/world_data/WDICountry.csv') %>% 
+  select('Country Name' = `Country Code`, `Short Name`)
+
+# hist data by year
+wdi_csv <- fread('./datasets/world_data/WDICSV.csv', header = T) 
 
 # Missing Values Function
   missing_vals <- function(dataframe) {
@@ -44,20 +54,18 @@ sources <- fread('./datasets/Emissions/GCB2023v43_sources_flat.csv') %>%
     results <- tibble(
       variables = colnames(dataframe),
       
-      n_obs = nrow,
-      
-      distinct_obs = dataframe %>% 
+      n_distnct = dataframe %>% 
         map_dfr(., ~n_distinct(.)) %>% 
         unlist(use.names = FALSE),
       
-      qty_missing = dataframe %>%
+      qty_na = dataframe %>%
         map_dfr(., ~case_when(is.na(.) == TRUE ~ 1,
                               is.nan(.) == TRUE ~ 1,
                               TRUE ~ 0)) %>%
         reframe(across(everything(), ~sum(.))) %>%
         unlist(use.names = FALSE),
       
-      perc_missing = round(qty_missing * 100 / nrow, 2),
+      perc_na = round(qty_na * 100 / nrow, 2),
       
       qty_blank = dataframe %>%
         map_dfr(., ~case_when(gsub("\\s+", " ", .) == ' ' ~ 1,
@@ -65,57 +73,53 @@ sources <- fread('./datasets/Emissions/GCB2023v43_sources_flat.csv') %>%
         reframe(across(everything(), ~sum(.))) %>%
         unlist(use.names = FALSE),
       
-      perc_blank = round(qty_blank * 100 / nrow, 2)
+      perc_blank = round(qty_blank * 100 / nrow, 2),
+      
+      qty_zero = dataframe %>%
+        map_dfr(., ~case_when(. == 0 ~ 1,
+                              TRUE ~ 0)) %>%
+        reframe(across(everything(), ~sum(.))) %>%
+        unlist(use.names = FALSE),
+      
+      perc_zero = round(qty_zero * 100 / nrow, 2)
     )
     
-    return(results)
+    return(print(results, n = 999))
   }
 
 # EDA ---------------------------------------------------------------------
 
 # Missing values for dataframes
   missing_vals(mt_c02)
-# variables            n_obs distinct_obs qty_missing perc_missing qty_blank perc_blank
-# 1 Country            63104          232           0         0            0          0
-# 2 ISO 3166-1 alpha-3 63104          226           0         0            0          0
-# 3 Year               63104          272           0         0            0          0
-# 4 Total              63104        16194         200         0.32         0          0
-# 5 Coal               63104        10834       41360        65.5          0          0
-# 6 Oil                63104        11735       41387        65.6          0          0
-# 7 Gas                63104         6444       41486        65.7          0          0
-# 8 Cement             63104         9120       42290        67.0          0          0
-# 9 Flaring            63104         3579       41554        65.8          0          0
-# 10 Other             63104         1520       61484        97.4          0          0
-# 11 Per Capita        63104        17112       44130        69.9          0          0
+#   variables    n_distinct qty_na perc_na qty_blank perc_blank qty_zero perc_zero
+# 1 Country             225      0     0           0          0        0      0   
+# 2 Country_Code        221      0     0           0          0        0      0   
+# 3 UN M49              225      0     0           0          0        0      0   
+# 4 Year                273      0     0           0          0        0      0   
+# 5 Total             17706  38253    62.3         0          0      257      0.42
+# 6 Coal              12097  38470    62.6         0          0     6765     11.0 
+# 7 Oil               11939  39655    64.6         0          0     2687      4.37
+# 8 Gas                6547  39683    64.6         0          0    13895     22.6 
+# 9 Cement             9227  37884    61.7         0          0    12319     20.1 
+# 10 Flaring           4191  39774    64.8         0          0    17164     27.9 
+# 11 Other             1565  59612    97.0         0          0      179      0.29
+# 12 Per Capita       17215  43882    71.4         0          0      284      0.46
   
   missing_vals(per_capita)
-# variables            n_obs distinct_obs qty_missing perc_missing qty_blank perc_blank
-# 1 Country            63104          232           0          0           0          0
-# 2 ISO 3166-1 alpha-3 63104          226           0          0           0          0
-# 3 Year               63104          272           0          0           0          0
-# 4 Total              63104        17054       44132         69.9         0          0
-# 5 Coal               63104        10872       45966         72.8         0          0
-# 6 Oil                63104        15975       46065         73           0          0
-# 7 Gas                63104         6851       46092         73.0         0          0
-# 8 Cement             63104         9856       47656         75.5         0          0
-# 9 Flaring            63104         3920       46160         73.2         0          0
-# 10 Other             63104         1581       61484         97.4         0          0
+#   variables          n_distinct qty_na perc_na qty_blank perc_blank qty_zero perc_zero
+# 1 Country                   225      0     0           0          0        0      0   
+# 2 ISO 3166-1 alpha-3        221      0     0           0          0        0      0   
+# 3 UN M49                    225      0     0           0          0        0      0   
+# 4 Year                      273      0     0           0          0        0      0   
+# 5 Total                   17160  44092    71.8         0          0       57      0.09
+# 6 Coal                    11091  44226    72           0          0     5861      9.54
+# 7 Oil                     16026  44309    72.1         0          0      943      1.54
+# 8 Gas                      7001  44399    72.3         0          0     9957     16.2 
+# 9 Cement                   9877  46260    75.3         0          0     5022      8.18
+# 10 Flaring                 4335  44500    72.4         0          0    12406     20.2 
+# 11 Other                   1629  59758    97.3         0          0       33      0.05
   
-  missing_vals(sources)
-# variables            n_obs distinct_obs qty_missing perc_missing qty_blank perc_blank
-# 1 Country            63104          232           0          0           0          0
-# 2 ISO 3166-1 alpha-3 63104          226           0          0           0          0
-# 3 Year               63104          272           0          0           0          0
-# 4 Total              63104           25       44636         70.7         0          0
-# 5 Coal               63104           27       44631         70.7         0          0
-# 6 Oil                63104           24       44860         71.1         0          0
-# 7 Gas                63104           25       44887         71.1         0          0
-# 8 Cement             63104            4       42018         66.6         0          0
-# 9 Flaring            63104           21       44955         71.2         0          0
-# 10 Other             63104           18       60996         96.7         0          0
-# 11 Per Capita        63104           35       41381         65.6         0          0
-
-# Data from 1750 onwards for some countries  
+# Data from 1750 Onwards for some countries  
 mt_c02 %>% distinct(Year) %>% summary()  
 
 #         Year     
@@ -170,9 +174,63 @@ empty_country_code %>% distinct(Country)
 # 3:          Leeward Islands
 # 4:  Pacific Islands (Palau)
 # *** All are island nations
-# * Country Code is not a needed feature
+
+# * No use for Country Code at this time
+
+### Select development indicators of interest
+
+# Writing csv of indicators to chatgpt to select categories to focus variable selection
+devlop_indicators <- wdi_csv %>% distinct(`Indicator Name`) 
+write_csv(devlop_indicators, file = './datasets/world_data/develop_indicators.csv')
+
+### Read in categorized Data
+cat_dev_indicators <- fread('./R Projects/Emissions-Data-Analysis/Data/Development_Indicators_Categorized.csv') %>%
+  select( # reducing to the following categories for analysis
+    `Public Services and Safety`,
+    `Governance and Institutional Quality`,
+    `Environmental Sustainability`,
+    `Income and Poverty`,
+    `Economic Performance and Growth`
+  ) %>% 
+  pivot_longer(cols = everything(), names_to = 'category', values_to = 'indicator') %>%
+  filter(!indicator == '')
 
 
+### Filtering out variables from each category
+
+# Public Services and Safety
+pub_ss <- cat_dev_indicators %>% filter(category == 'Public Services and Safety')
+pub_ss <- pub_ss %>% filter(!grepl('^Annual Freshwater|^Net Bilateral|, urban|, rural',
+                                   ignore.case = T, indicator))
+# Governance and Institutional Quality
+gov_iq <- cat_dev_indicators %>% filter(category == 'Governance and Institutional Quality')
+gov_iq <- gov_iq %>% filter(!grepl(', female|, male|, older|, young|, poor|, rich|Lower Bound of 90%|upper Bound of 90%',
+                                   ignore.case = T, indicator))
+# Environmental Sustainability
+env_sus <- cat_dev_indicators %>% filter(category == 'Environmental Sustainability')
+env_sus <- env_sus %>% filter(!grepl('emissions|CO2', # prevent potential multicollinearity with emissions target variable
+                                   ignore.case = T, indicator))
+# Income and Poverty
+inc_pov <- cat_dev_indicators %>% filter(category == 'Income and Poverty')
+inc_pov <- inc_pov %>% filter(!grepl('current US$|^Merchandise|current LCU|Secondary income|Survey mean consumption', 
+                                     ignore.case = T, indicator))
+# Other considerations: income share of 20% groupings, 
+
+# Economic Performance and Growth
+econ_pg <- cat_dev_indicators %>% filter(category == 'Economic Performance and Growth')
+econ_pg <- econ_pg %>% filter(!grepl(', male|, female|\\(current |emissions|NPISHs|hectares|^Claims on other sectors|Domestic credit|^Expense', 
+                                     ignore.case = T, indicator))
+# too many factors here, consider correlation matrix, then simple elastic net model to eliminate variables
+
+
+
+### Filter by amount of data available per variable 
+
+# look at correlation between variables, remove multicollinear
+
+
+
+# Why not use Principal Component Analysis for dimensionality reduction.. ?
 
 # Visualizations ----------------------------------------------------------
 
