@@ -1,21 +1,25 @@
-##################################################################
+# ##############################################################################
 # Author: Wulf Novak
 #
-# Project: Emissions based - Will decide after EDA
+# Project: Development Indicators of Rising 
+#          and Declining Country Emissions
 #
+# Date: 2024-05-03
+#
+# R version 4.4.0 (2024-04-24 ucrt)
+# ------------------------------------------------------------------------------
+# Sections:
+# - Setup
+# - Read in Data
+# - Etc
+# ##############################################################################
+
 # Data: World Emissions
 #       https://zenodo.org/records/7215364
 #       Convened by: Robbie M. Andrew and Glen Peters
 #
 #       World Development Indicators
 #       https://datacatalog.worldbank.org/search/dataset/0037712/World-Development-Indicators
-#
-# Date: 5/3/2024
-#
-# R version: 4.4.0
-##################################################################
-# Comments: 
-#
 
 # Setup -------------------------------------------------------------------
 
@@ -25,22 +29,6 @@ shelf(tidyverse, data.table, future, furrr,
       plotly, viridis, svglite)
 
 options(scipen = 999)
-
-### Read in Data 
-
-## Country level Emissions - primary dataset for analysis
-mt_c02 <- fread('./datasets/Emissions/GCB2023v43_MtCO2_flat.csv') %>%
-  rename(Country_Code = `ISO 3166-1 alpha-3`)
-
-# Per Capita Emissions
-per_capita <- fread('./datasets/Emissions/GCB2023v43_percapita_flat.csv')
-
-## World Development Indicators
-wdi_country <- fread('./datasets/world_data/WDICountry.csv') %>% 
-  select('Country Name' = `Country Code`, `Short Name`)
-
-# hist data by year
-wdi_csv <- fread('./datasets/world_data/WDICSV.csv', header = T) 
 
 # Missing Values Function
   missing_vals <- function(dataframe) {
@@ -89,6 +77,13 @@ wdi_csv <- fread('./datasets/world_data/WDICSV.csv', header = T)
 
 # EDA ---------------------------------------------------------------------
 
+## Country level Emissions - primary dataset for analysis
+mt_c02 <- fread('./datasets/Emissions/GCB2023v43_MtCO2_flat.csv') %>%
+  rename(Country_Code = `ISO 3166-1 alpha-3`)
+
+## Per Capita Emissions
+per_capita <- fread('./datasets/Emissions/GCB2023v43_percapita_flat.csv')
+
 # Missing values for dataframes
   missing_vals(mt_c02)
 #   variables    n_distinct qty_na perc_na qty_blank perc_blank qty_zero perc_zero
@@ -119,19 +114,10 @@ wdi_csv <- fread('./datasets/world_data/WDICSV.csv', header = T)
 # 10 Flaring                 4335  44500    72.4         0          0    12406     20.2 
 # 11 Other                   1629  59758    97.3         0          0       33      0.05
   
-# Data from 1750 Onwards for some countries  
-mt_c02 %>% distinct(Year) %>% summary()  
-
-#         Year     
-# Min.   :1750  
-# 1st Qu.:1818  
-# Median :1886  
-# Mean   :1886  
-# 3rd Qu.:1953  
-# Max.   :2021
+# Date values from 1750 to 2022
 
 # Any 'Country' level stats to not consider? 
-mt_c02 %>% distinct(Country) %>% View()
+  # mt_c02 %>% distinct(Country) %>% View()
 # International Transport, Global, Kuwait Oil Fires.
 
 # Adjust Japan emissions to include Ryukyu Islands emissions
@@ -168,22 +154,51 @@ mt_c02_adj <- mt_c02 %>%
 # Different in number of distinct country obs and country codes - why?
 empty_country_code <- mt_c02_adj %>% filter(Country_Code == '') 
 empty_country_code %>% distinct(Country)
-#                     Country
-# 1: French Equatorial Africa
-# 2:       French West Africa
-# 3:          Leeward Islands
-# 4:  Pacific Islands (Palau)
-# *** All are island nations
+## The following are missing country codes, will likely exclude from analysis
+# Country
+# 1:         Leeward Islands
+# 2: Pacific Islands (Palau)
 
-# * No use for Country Code at this time
+### World Development Indicators
+wdi_country <- fread('./datasets/world_data/WDICountry.csv') %>% 
+  select(`Country Code`, `Short Name`)
+
+## Development Indicators by Year
+wdi_csv <- fread('./datasets/world_data/WDICSV.csv', header = T) %>%
+  filter(`Country Code` %in% mt_c02_adj$Country_Code)
+
+# Countries/islands omitted due to lack of development indicator data
+mt_c02_adj %>% filter(!Country_Code %in% wdi_csv$`Country Code`) %>% 
+  distinct(Country)
+#                               Country
+# 1:                           Anguilla
+# 2:                         Antarctica
+# 3:  Bonaire, Saint Eustatius and Saba
+# 4:                   Christmas Island
+# 5:                       Cook Islands
+# 6:                  Panama Canal Zone
+# 7:                             Kosovo
+# 8:                    Leeward Islands
+# 9:                         Montserrat
+# 10:                              Niue
+# 11:           Pacific Islands (Palau)
+# 12:                      Saint Helena
+# 13:         Saint Pierre and Miquelon
+# 14:                            Taiwan
+# 15:         Wallis and Futuna Islands
+# 16:            International Shipping
+# 17:            International Aviation
 
 ### Select development indicators of interest
 
-# Writing csv of indicators to chatgpt to select categories to focus variable selection
-devlop_indicators <- wdi_csv %>% distinct(`Indicator Name`) 
-write_csv(devlop_indicators, file = './datasets/world_data/develop_indicators.csv')
+# # Writing csv of indicators to chatgpt to select categories for variable selection
+# develop_indicators <- wdi_csv %>% distinct(`Indicator Name`) 
+# write_csv(develop_indicators, file = './datasets/world_data/develop_indicators.csv')
 
 ### Read in categorized Data
+
+# ** Categories and descriptions are on github within 'Data' **
+
 cat_dev_indicators <- fread('./R Projects/Emissions-Data-Analysis/Data/Development_Indicators_Categorized.csv') %>%
   select( # reducing to the following categories for analysis
     `Public Services and Safety`,
@@ -222,12 +237,68 @@ econ_pg <- econ_pg %>% filter(!grepl(', male|, female|\\(current |emissions|NPIS
                                      ignore.case = T, indicator))
 # too many factors here, consider correlation matrix, then simple elastic net model to eliminate variables
 
+### Filter wdi_csv dataframe by development indicator
 
+all_ind_filt <- bind_rows(pub_ss, gov_iq, env_sus, inc_pov, econ_pg)
+
+wdi_filtered <- wdi_csv %>% 
+  filter(`Indicator Name` %in% all_ind_filt$indicator)
 
 ### Filter by amount of data available per variable 
 
-# look at correlation between variables, remove multicollinear
+missing_indicators <- wdi_filtered %>%
+  mutate(na_count_row = rowSums(is.na(.)),
+         indicator_name = `Indicator Name`) %>%
+  group_by(indicator_name) %>% 
+  # max possible NA: 2023 - 1960 = 63
+  reframe(
+    indicator_name,
+    count = n(), # sum characters
+    avg_na = mean(na_count_row, na.rm = T)
+  ) 
 
+# dist'n of missing values
+ggplot(missing_indicators, aes(x = avg_na)) + 
+  geom_density()
+
+# eliminate indicators where there are 60 + missing values -- may adjust in future (45 + ?)
+many_missing <- missing_indicators %>% 
+  distinct(indicator_name, .keep_all = T) %>% 
+  filter(avg_na > 60) %>% 
+  pull(indicator_name)
+
+# [1] "Account ownership at a financial institution or with a mobile-money-service provider (% of population ages 15+)"  
+# [2] "Annualized average growth rate in per capita real survey mean consumption or income, bottom 40% of population (%)"
+# [3] "Annualized average growth rate in per capita real survey mean consumption or income, total population (%)"        
+# [4] "Child employment in agriculture (% of economically active children ages 7-14)"                                    
+# [5] "Child employment in manufacturing (% of economically active children ages 7-14)"                                  
+# [6] "Child employment in services (% of economically active children ages 7-14)"                                       
+# [7] "Informal payments to public officials (% of firms)"                                                               
+# [8] "Investment in water and sanitation with private participation (current US$)"                                      
+# [9] "Multidimensional poverty headcount ratio (UNDP) (% of population)"                                                
+# [10] "Present value of external debt (% of exports of goods, services and primary income)"                              
+# [11] "Public private partnerships investment in ICT (current US$)"                                                      
+# [12] "Public private partnerships investment in transport (current US$)"                                                
+# [13] "Public private partnerships investment in water and sanitation (current US$)" 
+
+wdi_filtered_2 <- wdi_filtered %>% 
+  filter(!`Indicator Name` %in% many_missing) %>%
+  select(-`2023`) # omitting 2023 due to 99% of data missing
+  
+missing_vals(wdi_filtered_2) # output is too large to place in script
+
+### Num groups, num features, num df
+n_distinct(wdi_filtered_2$`Country Name`) 
+# 204 countries
+
+n_distinct(wdi_filtered_2$`Indicator Name`) 
+# 183 indicators
+
+
+# look at correlation between variables, remove multicollinearity
+
+
+# lags
 
 
 # Why not use Principal Component Analysis for dimensionality reduction.. ?
@@ -244,11 +315,11 @@ plot_df <- mt_c02_adj %>%
     Year, 
     Total, 
     tot_emissions,
-    # Calculate and Create variables for Quartiles
+    # Calculate and Create variables for quantiles
     upper_3rd = quantile(tot_emissions, prob = .75, na.rm = T) %>% unname(),
     upper_2nd = quantile(tot_emissions, prob = .5, na.rm = T) %>% unname(),
     upper_1st = quantile(tot_emissions, prob = .25, na.rm = T) %>% unname(),
-    country_emissions_quartile = case_when(
+    country_emissions_quantile = case_when(
       tot_emissions <= upper_1st ~ 1,
       tot_emissions <= upper_2nd ~ 2,
       tot_emissions <= upper_3rd ~ 3,
@@ -259,10 +330,10 @@ plot_df <- mt_c02_adj %>%
 
 ## Total Emissions by Country Over Time
     # Perhaps this is only useful as a plotly graph
-ggplot(plot_df %>% filter(Year >= 1900), #country_emissions_quartile == 4) , 
+ggplot(plot_df %>% filter(Year >= 1900), #country_emissions_quantile == 4) , 
        aes(x = Year, y = Total, color = Country)) +
   geom_line(show.legend = FALSE) + 
-  facet_wrap(~country_emissions_quartile,scales = 'free_y') + 
+  facet_wrap(~country_emissions_quantile,scales = 'free_y') + 
   scale_y_continuous(labels = scales::comma, n.breaks = 7) +
   scale_x_continuous(expand = c(0.01, 0)) + 
   scale_color_viridis_d(option = 'E') +
@@ -379,25 +450,84 @@ reduc_emissions_countries <- mt_c02_adj %>%
     max_total_emissions = max(Total, na.rm = T),
     # indicator for year of max emissions
     year_of_max_total_emissions = case_when(Total == max_total_emissions ~ 1, 
-                                            TRUE ~ 0),
-    most_recent_year = max(Year, na.rm = T)
+                                            TRUE ~ 0)
   ) %>%
   filter(
     year_of_max_total_emissions == 1,
-    # remove countries whose max emitting year is within past 3 years
+    # remove countries whose max emitting year is within past 3 years,
     Year < max(Year, na.rm = T) - 3 
     ) %>%
+  distinct(Country, .keep_all = T)
+
+reduc_emissions_countries$Year %>% summary()
+# Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+# 1949    1988    2007    2001    2014    2018 
+
+# What is the min usage after the max year emissions - what is the percent difference?
+
+# year and country 
+max_year_emissions <- reduc_emissions_countries %>% select(Country, max_year_for_filter = Year)
+
+min_after_max_emissions <- mt_c02_adj %>%
+  left_join(max_year_emissions, by = 'Country') %>%
+  group_by(Country) %>%
+  filter(Year >= max_year_for_filter) %>%
+  mutate(
+    min_emissions_by_country = min(Total, na.rm = T),
+    min_emission_year = case_when(Total == min_emissions_by_country ~ 1, 
+                                            TRUE ~ 0),
+    max_emission_year = min(Year, na.rm = T), 
+    years_from_max_to_min = max_emission_year - min_emission_year,
+    slope_emissions_v_year = coef(lm(Total ~ Year))[2]
+    ) %>%
+# filter countries with a positive slope for emissions over time after their max year
+# so countries that have reduced emissions over time remain 
+  filter(slope_emissions_v_year <= 0) %>%
+  ungroup() 
+
+nrow(min_after_max_emissions %>% distinct(Country))
+# 116 countries with reduced emissions (131 prior)
+
+reduc_emissions_countries_names <- min_after_max_emissions %>%
   distinct(Country) %>%
-  unlist(use.names = FALSE)
+  pull()
 
+### Plot dataframe
 plot_reduc_emissions_countries <- plot_df %>%
-  filter(Country %in% reduc_emissions_countries)
+  filter(Country %in% reduc_emissions_countries_names)
 
-# Plot of countries with reduction in usage, split into quartiles 
-ggplot(plot_reduc_emissions_countries %>% filter(Year >= 1900, country_emissions_quartile == 4), 
+# Country emissions quantile for countries
+count(plot_reduc_emissions_countries %>% distinct(Country, .keep_all = T), country_emissions_quantile)
+#   country_emissions_quantile     n
+# 1                          1    43
+# 2                          2    24
+# 3                          3    25
+# 4                          4    24
+
+# Countries with declining emissions 
+ggplot(plot_reduc_emissions_countries %>% filter(Year >= 1900), 
        aes(x = Year, y = Total, color = Country)) +
   geom_line(show.legend = FALSE) + 
-  facet_wrap(~country_emissions_quartile,scales = 'free_y') + 
+  facet_wrap(~country_emissions_quantile,scales = 'free_y') + 
+  scale_y_continuous(labels = scales::comma, n.breaks = 7) +
+  scale_x_continuous(expand = c(0.01, 0)) + 
+  scale_color_viridis_d(option = 'E') +
+  theme_minimal() + 
+  theme(axis.text.y = element_text(angle = 37)) +
+  labs(
+    title = 'Countries with Declining Emissions',
+    subtitle = 'Year 1900 Onwards, by Quartile',
+    y = 'Total C02 Emissions'
+  )
+
+# Countries with rising emissions
+plot_rising_emissions <- plot_df %>% 
+  filter(!Country %in% reduc_emissions_countries_names) 
+  
+ggplot(plot_rising_emissions %>% filter(Year >= 1900), 
+       aes(x = Year, y = Total, color = Country)) +
+  geom_line(show.legend = FALSE) + 
+  facet_wrap(~country_emissions_quantile,scales = 'free_y') + 
   scale_y_continuous(labels = scales::comma, n.breaks = 7) +
   scale_x_continuous(expand = c(0.01, 0)) + 
   scale_color_viridis_d(option = 'E') +
@@ -409,7 +539,15 @@ ggplot(plot_reduc_emissions_countries %>% filter(Year >= 1900, country_emissions
     y = 'Total C02 Emissions'
   )
 
-# Look at countries whose usage has steadily risen
+### Comparing rising emissions vs declining emissions
+
+# Modeling df 
+# (indicator of rising / reclining emissions, development indicators, 
+# just total?, what about the different sources)
+# sig diff by different energy source? Coal, Oil, Gas (others are more trivial?)
+
+# mt_c02_adj, 
+
 
 # Modeling ----------------------------------------------------------------
 
