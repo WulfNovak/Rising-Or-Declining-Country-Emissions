@@ -33,7 +33,7 @@ missing_vals <- function(dataframe) {
   results <- tibble(
     variables = colnames(dataframe),
     
-    n_distnct = dataframe %>% 
+    n_distinct = dataframe %>% 
       map_dfr(., ~n_distinct(.)) %>% 
       unlist(use.names = FALSE),
     

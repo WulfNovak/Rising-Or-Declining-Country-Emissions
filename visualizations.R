@@ -23,7 +23,6 @@ mt_c02_adj <- fread(file = './datasets/Emissions/mt_c02_adj.rds')
 
 # Indicator variables, model results
 
-
 # Rising Emission Visualizatoin -------------------------------------------
 
 ## Df for plotting Total Emissions by Country Over Time
@@ -260,3 +259,8 @@ ggplot(plot_rising_emissions %>% filter(Year >= 1900),
     subtitle = 'Year 1900 Onwards',
     y = 'Total C02 Emissions'
   )
+
+# Choropleth --------------------------------------------------------------
+
+### to be added at a later date
+
