@@ -1,0 +1,197 @@
+category,indicator
+Public Services and Safety,CPIA equity of public resource use rating (1=low to 6=high)
+Public Services and Safety,CPIA quality of public administration rating (1=low to 6=high)
+Public Services and Safety,"Debt service on external debt, public and publicly guaranteed (PPG) (TDS, current US$)"
+Public Services and Safety,"External debt stocks, public and publicly guaranteed (PPG) (DOD, current US$)"
+Public Services and Safety,Informal payments to public officials (% of firms)
+Public Services and Safety,Investment in water and sanitation with private participation (current US$)
+Public Services and Safety,Level of water stress: freshwater withdrawal as a proportion of available freshwater resources
+Public Services and Safety,Marine protected areas (% of territorial waters)
+Public Services and Safety,Multilateral debt service (% of public and publicly guaranteed debt service)
+Public Services and Safety,People using at least basic drinking water services (% of population)
+Public Services and Safety,People using at least basic sanitation services (% of population)
+Public Services and Safety,People using safely managed drinking water services (% of population)
+Public Services and Safety,People using safely managed sanitation services (% of population)
+Public Services and Safety,People with basic handwashing facilities including soap and water (% of population)
+Public Services and Safety,Public and publicly guaranteed debt service (% of GNI)
+Public Services and Safety,Public credit registry coverage (% of adults)
+Public Services and Safety,Public private partnerships investment in energy (current US$)
+Public Services and Safety,Public private partnerships investment in ICT (current US$)
+Public Services and Safety,Public private partnerships investment in transport (current US$)
+Public Services and Safety,Public private partnerships investment in water and sanitation (current US$)
+Governance and Institutional Quality,Account ownership at a financial institution or with a mobile-money-service provider (% of population ages 15+)
+Governance and Institutional Quality,Control of Corruption: Estimate
+Governance and Institutional Quality,Control of Corruption: Number of Sources
+Governance and Institutional Quality,Control of Corruption: Percentile Rank
+Governance and Institutional Quality,Control of Corruption: Standard Error
+Governance and Institutional Quality,CPIA property rights and rule-based governance rating (1=low to 6=high)
+Governance and Institutional Quality,CPIA public sector management and institutions cluster average (1=low to 6=high)
+Governance and Institutional Quality,"CPIA transparency, accountability, and corruption in the public sector rating (1=low to 6=high)"
+Governance and Institutional Quality,"Net bilateral aid flows from DAC donors, European Union institutions (current US$)"
+Governance and Institutional Quality,Political Stability and Absence of Violence/Terrorism: Estimate
+Governance and Institutional Quality,Political Stability and Absence of Violence/Terrorism: Number of Sources
+Governance and Institutional Quality,Political Stability and Absence of Violence/Terrorism: Percentile Rank
+Governance and Institutional Quality,Political Stability and Absence of Violence/Terrorism: Standard Error
+Governance and Institutional Quality,Rule of Law: Estimate
+Governance and Institutional Quality,Rule of Law: Number of Sources
+Governance and Institutional Quality,Rule of Law: Percentile Rank
+Governance and Institutional Quality,Rule of Law: Standard Error
+Governance and Institutional Quality,Women Business and the Law Index Score (scale 1-100)
+Environmental Sustainability,Combustible renewables and waste (% of total energy)
+Environmental Sustainability,CPIA business regulatory environment rating (1=low to 6=high)
+Environmental Sustainability,CPIA policy and institutions for environmental sustainability rating (1=low to 6=high)
+Environmental Sustainability,Renewable energy consumption (% of total final energy consumption)
+Environmental Sustainability,Renewable internal freshwater resources per capita (cubic meters)
+Environmental Sustainability,"Renewable internal freshwater resources, total (billion cubic meters)"
+Income and Poverty,Adjusted net national income (constant 2015 US$)
+Income and Poverty,Adjusted net national income (current US$)
+Income and Poverty,Adjusted net national income per capita (constant 2015 US$)
+Income and Poverty,Adjusted net national income per capita (current US$)
+Income and Poverty,"Debt service (PPG and IMF only, % of exports of goods, services and primary income)"
+Income and Poverty,"Exports of goods, services and primary income (BoP, current US$)"
+Income and Poverty,Gini index
+Income and Poverty,Gross domestic income (constant LCU)
+Income and Poverty,"Imports of goods, services and primary income (BoP, current US$)"
+Income and Poverty,Income share held by fourth 20%
+Income and Poverty,Income share held by highest 10%
+Income and Poverty,Income share held by highest 20%
+Income and Poverty,Income share held by lowest 10%
+Income and Poverty,Income share held by lowest 20%
+Income and Poverty,Income share held by second 20%
+Income and Poverty,Income share held by third 20%
+Income and Poverty,Logistics performance index: Ease of arranging competitively priced shipments (1=low to 5=high)
+Income and Poverty,Multidimensional poverty headcount ratio (UNDP) (% of population)
+Income and Poverty,Multidimensional poverty headcount ratio (World Bank) (% of population)
+Income and Poverty,"Net ODA received (% of imports of goods, services and primary income)"
+Income and Poverty,"Net primary income (BoP, current US$)"
+Income and Poverty,Net primary income (Net income from abroad) (constant LCU)
+Income and Poverty,Net primary income (Net income from abroad) (current US$)
+Income and Poverty,Poverty gap at $2.15 a day (2017 PPP) (%)
+Income and Poverty,Poverty gap at $3.65 a day (2017 PPP) (%)
+Income and Poverty,Poverty gap at $6.85 a day (2017 PPP) (%)
+Income and Poverty,Poverty headcount ratio at $2.15 a day (2017 PPP) (% of population)
+Income and Poverty,Poverty headcount ratio at $3.65 a day (2017 PPP) (% of population)
+Income and Poverty,Poverty headcount ratio at $6.85 a day (2017 PPP) (% of population)
+Income and Poverty,Poverty headcount ratio at national poverty lines (% of population)
+Income and Poverty,Poverty headcount ratio at societal poverty line (% of population)
+Income and Poverty,"Present value of external debt (% of exports of goods, services and primary income)"
+Income and Poverty,Primary government expenditures as a proportion of original approved budget (%)
+Income and Poverty,"Primary income payments (BoP, current US$)"
+Income and Poverty,"Primary income receipts (BoP, current US$)"
+Income and Poverty,Proportion of people living below 50 percent of median income (%)
+Income and Poverty,"Public and publicly guaranteed debt service (% of exports of goods, services and primary income)"
+Income and Poverty,Refugee population by country or territory of origin
+Income and Poverty,"Short-term debt (% of exports of goods, services and primary income)"
+Income and Poverty,"Taxes on income, profits and capital gains (% of revenue)"
+Income and Poverty,"Taxes on income, profits and capital gains (% of total taxes)"
+Income and Poverty,"Total debt service (% of exports of goods, services and primary income)"
+Economic Performance and Growth,Adjusted net national income (annual % growth)
+Economic Performance and Growth,Adjusted net national income per capita (annual % growth)
+Economic Performance and Growth,"Agriculture, forestry, and fishing, value added (% of GDP)"
+Economic Performance and Growth,"Agriculture, forestry, and fishing, value added (annual % growth)"
+Economic Performance and Growth,"Annualized average growth rate in per capita real survey mean consumption or income, bottom 40% of population (%)"
+Economic Performance and Growth,"Annualized average growth rate in per capita real survey mean consumption or income, total population (%)"
+Economic Performance and Growth,Aquaculture production (metric tons)
+Economic Performance and Growth,Broad money (% of GDP)
+Economic Performance and Growth,Broad money growth (annual %)
+Economic Performance and Growth,Capture fisheries production (metric tons)
+Economic Performance and Growth,"Central government debt, total (% of GDP)"
+Economic Performance and Growth,Cereal production (metric tons)
+Economic Performance and Growth,Child employment in agriculture (% of economically active children ages 7-14)
+Economic Performance and Growth,Child employment in manufacturing (% of economically active children ages 7-14)
+Economic Performance and Growth,Child employment in services (% of economically active children ages 7-14)
+Economic Performance and Growth,Claims on central government (annual growth as % of broad money)
+Economic Performance and Growth,"Claims on central government, etc. (% GDP)"
+Economic Performance and Growth,Claims on private sector (annual growth as % of broad money)
+Economic Performance and Growth,Coal rents (% of GDP)
+Economic Performance and Growth,CPIA economic management cluster average (1=low to 6=high)
+Economic Performance and Growth,CPIA macroeconomic management rating (1=low to 6=high)
+Economic Performance and Growth,Crop production index (2014-2016 = 100)
+Economic Performance and Growth,Current account balance (% of GDP)
+Economic Performance and Growth,Discrepancy in expenditure estimate of GDP (constant LCU)
+Economic Performance and Growth,Electricity production from coal sources (% of total)
+Economic Performance and Growth,Electricity production from hydroelectric sources (% of total)
+Economic Performance and Growth,Electricity production from natural gas sources (% of total)
+Economic Performance and Growth,Electricity production from nuclear sources (% of total)
+Economic Performance and Growth,Electricity production from oil sources (% of total)
+Economic Performance and Growth,"Electricity production from oil, gas and coal sources (% of total)"
+Economic Performance and Growth,"Electricity production from renewable sources, excluding hydroelectric (% of total)"
+Economic Performance and Growth,"Electricity production from renewable sources, excluding hydroelectric (kWh)"
+Economic Performance and Growth,Energy intensity level of primary energy (MJ/$2017 PPP GDP)
+Economic Performance and Growth,"Energy use (kg of oil equivalent) per $1,000 GDP (constant 2017 PPP)"
+Economic Performance and Growth,Exports of goods and services (% of GDP)
+Economic Performance and Growth,Exports of goods and services (annual % growth)
+Economic Performance and Growth,External balance on goods and services (% of GDP)
+Economic Performance and Growth,Fertilizer consumption (% of fertilizer production)
+Economic Performance and Growth,Final consumption expenditure (% of GDP)
+Economic Performance and Growth,Final consumption expenditure (annual % growth)
+Economic Performance and Growth,Food production index (2014-2016 = 100)
+Economic Performance and Growth,"Foreign direct investment, net inflows (% of GDP)"
+Economic Performance and Growth,"Foreign direct investment, net outflows (% of GDP)"
+Economic Performance and Growth,Forest rents (% of GDP)
+Economic Performance and Growth,GDP (constant 2015 US$)
+Economic Performance and Growth,GDP (constant LCU)
+Economic Performance and Growth,GDP deflator (base year varies by country)
+Economic Performance and Growth,GDP deflator: linked series (base year varies by country)
+Economic Performance and Growth,GDP growth (annual %)
+Economic Performance and Growth,GDP per capita (constant 2015 US$)
+Economic Performance and Growth,GDP per capita (constant LCU)
+Economic Performance and Growth,GDP per capita growth (annual %)
+Economic Performance and Growth,"GDP per capita, PPP (constant 2017 international $)"
+Economic Performance and Growth,GDP per person employed (constant 2017 PPP $)
+Economic Performance and Growth,GDP per unit of energy use (constant 2017 PPP $ per kg of oil equivalent)
+Economic Performance and Growth,GDP per unit of energy use (PPP $ per kg of oil equivalent)
+Economic Performance and Growth,"GDP, PPP (constant 2017 international $)"
+Economic Performance and Growth,General government final consumption expenditure (% of GDP)
+Economic Performance and Growth,General government final consumption expenditure (annual % growth)
+Economic Performance and Growth,GNI growth (annual %)
+Economic Performance and Growth,GNI per capita growth (annual %)
+Economic Performance and Growth,"Government expenditure per student, primary (% of GDP per capita)"
+Economic Performance and Growth,"Government expenditure per student, secondary (% of GDP per capita)"
+Economic Performance and Growth,"Government expenditure per student, tertiary (% of GDP per capita)"
+Economic Performance and Growth,Gross capital formation (% of GDP)
+Economic Performance and Growth,Gross capital formation (annual % growth)
+Economic Performance and Growth,Gross domestic savings (% of GDP)
+Economic Performance and Growth,Gross fixed capital formation (% of GDP)
+Economic Performance and Growth,Gross fixed capital formation (annual % growth)
+Economic Performance and Growth,"Gross fixed capital formation, private sector (% of GDP)"
+Economic Performance and Growth,Gross national expenditure (% of GDP)
+Economic Performance and Growth,Gross savings (% of GDP)
+Economic Performance and Growth,Imports of goods and services (% of GDP)
+Economic Performance and Growth,Imports of goods and services (annual % growth)
+Economic Performance and Growth,"Industry (including construction), value added (% of GDP)"
+Economic Performance and Growth,"Industry (including construction), value added (annual % growth)"
+Economic Performance and Growth,"Inflation, consumer prices (annual %)"
+Economic Performance and Growth,"Inflation, GDP deflator (annual %)"
+Economic Performance and Growth,"Inflation, GDP deflator: linked series (annual %)"
+Economic Performance and Growth,Livestock production index (2014-2016 = 100)
+Economic Performance and Growth,"Manufacturing, value added (% of GDP)"
+Economic Performance and Growth,"Manufacturing, value added (annual % growth)"
+Economic Performance and Growth,Market capitalization of listed domestic companies (% of GDP)
+Economic Performance and Growth,Merchandise trade (% of GDP)
+Economic Performance and Growth,Military expenditure (% of GDP)
+Economic Performance and Growth,Mineral rents (% of GDP)
+Economic Performance and Growth,Monetary Sector credit to private sector (% GDP)
+Economic Performance and Growth,Natural gas rents (% of GDP)
+Economic Performance and Growth,Net acquisition of financial assets (% of GDP)
+Economic Performance and Growth,"Net incurrence of liabilities, total (% of GDP)"
+Economic Performance and Growth,Net investment in nonfinancial assets (% of GDP)
+Economic Performance and Growth,Net lending (+) / net borrowing (-) (% of GDP)
+Economic Performance and Growth,Oil rents (% of GDP)
+Economic Performance and Growth,"Personal remittances, received (% of GDP)"
+Economic Performance and Growth,Population growth (annual %)
+Economic Performance and Growth,"PPP conversion factor, GDP (LCU per international $)"
+Economic Performance and Growth,Price level ratio of PPP conversion factor (GDP) to market exchange rate
+Economic Performance and Growth,Research and development expenditure (% of GDP)
+Economic Performance and Growth,"Revenue, excluding grants (% of GDP)"
+Economic Performance and Growth,Rural population growth (annual %)
+Economic Performance and Growth,"Services, value added (% of GDP)"
+Economic Performance and Growth,"Services, value added (annual % growth)"
+Economic Performance and Growth,"Stocks traded, total value (% of GDP)"
+Economic Performance and Growth,Tax revenue (% of GDP)
+Economic Performance and Growth,Total fisheries production (metric tons)
+Economic Performance and Growth,Total natural resources rents (% of GDP)
+Economic Performance and Growth,Trade (% of GDP)
+Economic Performance and Growth,Trade in services (% of GDP)
+Economic Performance and Growth,Urban population growth (annual %)
+Economic Performance and Growth,"Water productivity, total (constant 2015 US$ GDP per cubic meter of total freshwater withdrawal)"
