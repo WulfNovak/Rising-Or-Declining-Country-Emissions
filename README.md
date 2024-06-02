@@ -3,7 +3,6 @@
 Project Notes: 
 * For the time being, plots from the emissions_eda script are provided in the 'Plots' folder
 * Categorized development indicators are made available in the 'Data' folder
-* Some thoroughness and reasoning has been excluded to reduce the scope of the project
 
 The following is underway:
 * Cleaning Dataframe
