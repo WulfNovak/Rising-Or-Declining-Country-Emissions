@@ -11,6 +11,8 @@
 # Sections:
 # - Emissions Data Prep
 # - World Development Indicators Prep
+# - Select Countries with Declining Total Emissions
+# - Select Countries with Rising Total Emissions
 # ##############################################################################
 
 # Data: World Emissions
@@ -25,7 +27,7 @@ source('./R Projects/Emissions-Data-Analysis/Setup.R')
 # Emissions Data Prep -----------------------------------------------------
 
 ## Country level Emissions - primary dataset for analysis
-mt_c02 <- fread('./datasets/Emissions/GCB2023v43_MtCO2_flat.csv') %>%
+emissions_dt <- fread('./datasets/Emissions/GCB2023v43_MtCO2_flat.csv') %>%
   rename(Country_Code = `ISO 3166-1 alpha-3`)
 
 # Country Names (Cleaned) and Codes
@@ -36,7 +38,7 @@ wdi_country <- fread('./datasets/world_data/WDICountry.csv') %>%
 # per_capita <- fread('./datasets/Emissions/GCB2023v43_percapita_flat.csv')
 
 # Missing values for dataframes
-missing_vals(mt_c02)
+missing_vals(emissions_dt)
 #   variables    n_distinct qty_na perc_na qty_blank perc_blank qty_zero perc_zero
 # 1 Country             225      0     0           0          0        0      0   
 # 2 Country_Code        221      0     0           0          0        0      0   
@@ -65,18 +67,18 @@ missing_vals(mt_c02)
 # 10 Flaring                 4335  44500    72.4         0          0    12406     20.2 
 # 11 Other                   1629  59758    97.3         0          0       33      0.05
 
-range(mt_c02$Year)
+range(emissions_dt$Year)
 # 1750 to 2022
 
 ### Any 'Country' level stats to not consider? 
 
-# mt_c02 %>% distinct(Country) %>% View()
+# emissions_dt %>% distinct(Country) %>% View()
 # International Transport, Global, Kuwait Oil Fires.
 
 # Adjust Japan emissions to include Ryukyu Islands emissions
 # for the 1952-1972 time period they were reported separately.
 
-japan_adj <- mt_c02 %>%
+japan_adj <- emissions_dt %>%
   filter(Country %in% c('Ryukyu Islands', 'Japan')) %>%
   mutate(Country = ifelse(Country == 'Ryukyu Islands', 'Japan', Country)) %>%
   group_by(Country, Year) %>%
@@ -95,31 +97,32 @@ japan_adj <- mt_c02 %>%
   distinct(Country, Year, Total, .keep_all = T)
 
 # Update Country level emissions with Japan adjustment and remove non-countries
-mt_c02_adj <- mt_c02 %>%
+emissions_dt_2 <- emissions_dt %>%
   left_join(wdi_country, by = c('Country_Code' = 'Country Code')) %>%
   filter(!Country %in% c('International Transport', 'Global', 'Kuwaiti Oil Fires', 
                          'Ryukyu Islands', 'Japan', 'International Shipping', 
-                         'International Aviation')
+                         'International Aviation', 'Leeward Islands',
+                         'Pacific Islands (Palau)'
+                         )
   ) %>%
   bind_rows(japan_adj) %>% 
   filter(!Total == 0) %>% # Remove 0 Total emission observations
   # The following countries had 0 emissions from 2000 onward:
   # 1. Christmas Island
   # 2. Panama Canal Zone
-  # 3. Leeward Islands
-  # 4. Pacific Islands (Palau)
-  
   mutate(Country = 
            case_when(!is.na(Country) & !is.na(`Short Name`) ~ `Short Name`, 
                      !is.na(`Short Name`) ~ `Short Name`,
                      is.na(`Short Name`) ~ Country)) %>% # Replace country name with accurate wdi country names
   select(-c('Short Name', 'UN M49'))
 
-## Write mt_c02_adj to datafile
-fwrite(mt_c02_adj, file = './datasets/Emissions/mt_c02_adj.rds')
+# missing_vals(emissions_dt_2)
+
+## Write emissions_dt_2 to datafile
+fwrite(emissions_dt_2, file = './datasets/Emissions/emissions_dt_2.rds')
 
 ### Analysis of Total Emissions by Country
-country_mu_sd <- mt_c02_adj %>% 
+country_mu_sd <- emissions_dt_2 %>% 
   group_by(Country) %>%
   reframe(
     mean_total = mean(Total, na.rm = T),
@@ -129,21 +132,20 @@ country_mu_sd <- mt_c02_adj %>%
 summary(country_mu_sd %>% select(-Country))
 #        mean_total           sd_total       
 # Min.   :   0.0056   Min.   :   0.002  
-# 1st Qu.:   0.5688   1st Qu.:   0.417  
-# Median :   3.8497   Median :   3.593  
-# Mean   :  49.0246   Mean   :  59.364  
-# 3rd Qu.:  23.6792   3rd Qu.:  24.199  
+# 1st Qu.:   0.6103   1st Qu.:   0.429  
+# Median :   3.9728   Median :   3.627  
+# Mean   :  49.4758   Mean   :  59.910  
+# 3rd Qu.:  24.3463   3rd Qu.:  24.199  
 # Max.   :2246.7168   Max.   :3311.293
-
 
 # World Development Indicators Prep ---------------------------------------
 
 ## Development Indicators by Year
 wdi_csv <- fread('./datasets/world_data/WDICSV.csv', header = T) %>%
-  filter(`Country Code` %in% mt_c02_adj$Country_Code)
+  filter(`Country Code` %in% emissions_dt_2$Country_Code)
 
 # Countries/islands omitted due to lack of development indicator data
-mt_c02_adj %>% 
+emissions_dt_2 %>% 
   filter(!Country_Code %in% wdi_country$`Country Code`,
          Year >= 2000) %>% #
   group_by(Country) %>%
@@ -328,7 +330,7 @@ n_distinct(wdi_filtered_2$Indicator_Name)
 # 2. Slope of normalized total emissions by country to year is negative and 
 #    statistically significant, for data of max year of emissions onward
 
-reduc_emissions_countries <- mt_c02_adj %>%
+reduc_emissions_countries <- emissions_dt_2 %>%
   select(Country, Year, Total) %>%
   group_by(Country) %>%
   mutate(
@@ -348,41 +350,39 @@ reduc_emissions_countries <- mt_c02_adj %>%
   ungroup() %>%
   distinct(Country, year_of_max_total_emissions, .keep_all = T)
 
-# 89 Countries omitted due to year requirement:
-mt_c02_adj %>% filter(!Country %in% c(reduc_emissions_countries %>% pull(Country))) %>% 
+# 87 Countries omitted due to year requirement:
+emissions_dt_2 %>% filter(!Country %in% c(reduc_emissions_countries %>% pull(Country))) %>% 
   distinct(Country) %>% pull()
 
-# [1] "Afghanistan"              "Algeria"                  "Anguilla"                
-# [4] "Argentina"                "Australia"                "Bahrain"                 
-# [7] "Bangladesh"               "Belize"                   "Benin"                   
-# [10] "Burkina Faso"             "Burundi"                  "Cambodia"                
-# [13] "Chad"                     "Chile"                    "China"                   
-# [16] "Colombia"                 "Comoros"                  "Congo"                   
-# [19] "Dominican Republic"       "El Salvador"              "Ethiopia"                
-# [22] "Fiji"                     "Panama Canal Zone"        "Gambia"                  
-# [25] "Ghana"                    "Grenada"                  "Guatemala"               
-# [28] "Guinea"                   "Guinea-Bissau"            "Guyana"                  
-# [31] "Honduras"                 "India"                    "Indonesia"               
-# [34] "Iraq"                     "Kenya"                    "Kiribati"                
-# [37] "Kuwait"                   "Laos"                     "Leeward Islands"         
-# [40] "Lesotho"                  "Libya"                    "Madagascar"              
-# [43] "Malawi"                   "Malaysia"                 "Maldives"                
-# [46] "Mali"                     "Marshall Islands"         "Mauritania"              
-# [49] "Mexico"                   "Mongolia"                 "Morocco"                 
-# [52] "Myanmar"                  "Nepal"                    "Nicaragua"               
-# [55] "Niger"                    "Nigeria"                  "State of Palestine"      
-# [58] "Oman"                     "Pacific Islands (Palau)"  "Pakistan"                
-# [61] "Panama"                   "Papua New Guinea"         "Paraguay"                
-# [64] "Peru"                     "Philippines"              "Bolivia"                 
-# [67] "Qatar"                    "Cameroon"                 "Sudan"                   
-# [70] "Rwanda"                   "Saint Helena"             "Samoa"                   
-# [73] "Saudi Arabia"             "Senegal"                  "Seychelles"              
-# [76] "Saint Kitts and Nevis"    "St. Kitts-Nevis-Anguilla" "Suriname"                
-# [79] "Taiwan"                   "Tonga"                    "Tunisia"                 
-# [82] "Türkiye"                  "Turkmenistan"             "Tuvalu"                  
-# [85] "Uganda"                   "United Arab Emirates"     "Tanzania"                
-# [88] "Vanuatu"                  "Viet Nam"                 "Zambia"                  
-# [91] "International Aviation"
+# [1] "Afghanistan"          "Algeria"              "Anguilla"            
+# [4] "Argentina"            "Australia"            "Bahrain"             
+# [7] "Bangladesh"           "Belize"               "Benin"               
+# [10] "Burkina Faso"         "Burundi"              "Cambodia"            
+# [13] "Chad"                 "Chile"                "China"               
+# [16] "Colombia"             "Comoros"              "Congo"               
+# [19] "Dominican Republic"   "El Salvador"          "Ethiopia"            
+# [22] "Fiji"                 "Panama Canal Zone"    "The Gambia"          
+# [25] "Ghana"                "Grenada"              "Guatemala"           
+# [28] "Guinea"               "Guinea-Bissau"        "Guyana"              
+# [31] "Honduras"             "India"                "Indonesia"           
+# [34] "Iraq"                 "Kenya"                "Kiribati"            
+# [37] "Kuwait"               "Lao PDR"              "Lesotho"             
+# [40] "Libya"                "Madagascar"           "Malawi"              
+# [43] "Malaysia"             "Maldives"             "Mali"                
+# [46] "Marshall Islands"     "Mauritania"           "Mexico"              
+# [49] "Mongolia"             "Morocco"              "Myanmar"             
+# [52] "Nepal"                "Nicaragua"            "Niger"               
+# [55] "Nigeria"              "West Bank and Gaza"   "Oman"                
+# [58] "Pakistan"             "Panama"               "Papua New Guinea"    
+# [61] "Paraguay"             "Peru"                 "Philippines"         
+# [64] "Bolivia"              "Qatar"                "Cameroon"            
+# [67] "Sudan"                "Rwanda"               "Saint Helena"        
+# [70] "Samoa"                "Saudi Arabia"         "Senegal"             
+# [73] "Seychelles"           "St. Kitts and Nevis"  "Suriname"            
+# [76] "Taiwan"               "Tonga"                "Tunisia"             
+# [79] "Türkiye"              "Turkmenistan"         "Tuvalu"              
+# [82] "Uganda"               "United Arab Emirates" "Tanzania"            
+# [85] "Vanuatu"              "Viet Nam"             "Zambia" 
 
 max_year_emissions <- reduc_emissions_countries %>% select(Country, year_of_max_total_emissions)
 
@@ -391,16 +391,17 @@ max_year_emissions <- reduc_emissions_countries %>% select(Country, year_of_max_
 # get slope based on year (as year increases, total emissions decrease)
 # indicate countries whose emissions do NOT decrease
 
-emissions_slope_data <- mt_c02_adj %>%
+# Prepare data from year of max total emissions onward
+emissions_slope_data <- emissions_dt_2 %>%
   left_join(max_year_emissions, by = 'Country') %>%
   select(Country, Year, year_of_max_total_emissions, Total) %>%
   group_by(Country) %>%
   filter(# remove countries omitted by year requirement from consideration
          Country %in% c(max_year_emissions %>% pull(Country)),
          Year >= year_of_max_total_emissions) %>%
-  mutate( # normalize total by year 
-    norm_tot = scale(Total)[,1]) 
+  mutate(norm_tot = scale(Total)[,1]) # normalize total by year 
 
+# Create models and summaries for each country
 model_summaries <- emissions_slope_data %>%
   group_by(Country) %>%
   nest() %>%
@@ -409,12 +410,12 @@ model_summaries <- emissions_slope_data %>%
     summary = map(model, broom::tidy)
   )
 
+# Unpack critical information (Country, slope estimate, p-value, significance)
 model_stats <- model_summaries %>%
   select(Country, summary) %>%
   unnest(summary) %>%
   group_by(Country) %>%
   reframe(
-    Country,
     slope_estimate = round(estimate[2], 3),
     p_value = format.pval(p.value[2], digits = 3),
     sig_alpha_.05 = case_when(p_value <= .05 ~ 1,
@@ -486,50 +487,215 @@ final_declining_emissions <- model_stats %>% filter(slope_estimate < 0, sig_alph
 
 # Select Countries with Rising Total Emissions ----------------------------
 
-# take the compliment of the set of countries with declining emissions
-#   perhaps only select those with significant positive slope?
-# 
-# 
-# # Compliment of declining emissions dataset
-# rising_emissions <- mt_c02_adj %>%
-#   select(Country, Year, Total) %>%
-#   filter(Year >= 2000,
-#          !Country %in% final_declining_emissions) %>%
-#   group_by(Country) %>%
-#   mutate( # creating indicator for positive slope
-#     slope_emissions_vs_year = coef(lm(Total ~ Year))[2],
-#     positive_slope_indicator = case_when(slope_emissions_vs_year >= 0 ~ 1,
-#                                          slope_emissions_vs_year < 0 ~ 0)
-#   ) %>%
-#   ungroup() %>%
-#   distinct(Country, slope_emissions_vs_year, positive_slope_indicator)
-#   # distinct(Country) %>%
-#   # filter(!Country %in% final_declining_emissions) %>%
-#   # pull()
-# 
-# # Should this list be refine to countries who have a positive slope from 2000 to 2022?
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# # The following dataframe 
-# wdi_filtered_3 <- mt_c02_adj %>% 
-#   select(Country, Country_Code, Year, Total, Coal, Oil, Gas) %>% 
-#   filter(Country_Code %in% (wdi_filtered_2 %>% distinct(Country_Code) %>% pull())) %>% # min year with development indicators available
-#   left_join(wdi_filtered_2 %>% mutate(Year = as.integer(Year)), 
-#             by = c("Country_Code", "Year")) %>%
-#   pivot_wider(names_from = 'Indicator_Name', values_from = 'value') 
-#   # standardize or normalize the variables 
-# 
-# 
+# Of countries without declining total emissions, which have rising total emissions?
+rising_emissions_candidates <- emissions_dt_2 %>%
+  select(Country, Year, Total) %>%
+  filter(!Country %in% final_declining_emissions) %>%
+  group_by(Country) %>%
+  mutate(
+    max_total_emissions = max(Total, na.rm = T),
+    # indicator for year of max emissions
+    year_of_max_total_emissions_indicator = case_when(Total == max_total_emissions ~ 1, 
+                                                      TRUE ~ 0)) %>%
+  filter(year_of_max_total_emissions_indicator == 1) %>%
+  mutate(# if multiple periods of max emissions, choose most recent
+    year_of_max_total_emissions = max(Year, na.rm = T)
+  ) %>%
+  ungroup() %>%
+  distinct(Country, year_of_max_total_emissions)
+
+# prepare country-level slope data
+rising_emissions_slope_data <- emissions_dt_2 %>%
+  left_join(rising_emissions_candidates, by = 'Country') %>%
+  select(Country, Year, year_of_max_total_emissions, Total) %>%
+  group_by(Country) %>%
+  filter(
+    # remove countries omitted by year requirement from consideration
+    Country %in% c(rising_emissions_candidates %>% pull(Country)),
+    # Calculate slope from minimum of 1. year with max emissions OR 2. 2000
+      # To assure plentiful data for countries whose max emissions year is > 2000
+    Year >= case_when(year_of_max_total_emissions < 2000 ~ year_of_max_total_emissions,
+                      year_of_max_total_emissions >= 2000 ~ 2000),
+    # remove countries whose total emissions are 0 after 2000
+    case_when(Year >= 2000 & Total != 0 ~ TRUE,
+              Year >= 2000 & Total == 0 ~ FALSE)
+      # The following countries are removed: 
+      # 1. "Panama Canal Zone"
+      # 2. "Leeward Islands"
+      # 3. "Pacific Islands (Palau)"
+    ) %>%
+  mutate(norm_tot = scale(Total)[,1]) %>%
+  ungroup()
+
+# Create models and summaries for each country
+model_summaries_2 <- rising_emissions_slope_data %>%
+  group_by(Country) %>%
+  nest() %>%
+  reframe(
+    model = map(data, .f = ~ lm(norm_tot ~ Year, data = .x)),
+    summary = map(model, broom::tidy)
+  )
+
+# Unpack critical information (Country, slope estimate, p-value, significance)
+model_stats_2 <- model_summaries_2 %>%
+  select(Country, summary) %>%
+  unnest(summary) %>%
+  group_by(Country) %>%
+  reframe(
+    Country,
+    slope_estimate = round(estimate[2], 3),
+    p_value = format.pval(p.value[2], digits = 3),
+    sig_alpha_.05 = case_when(p_value <= .05 ~ 1,
+                              p_value > .05 ~ 0),
+    positive_slope_indicator = case_when(slope_estimate > 0 ~ 1,
+                                         slope_estimate <= 0 ~ 0)
+  ) %>% 
+  ungroup() %>%
+  distinct(Country, .keep_all = T)
+
+# Count of countries with significant slopes
+count(model_stats_2 , sig_alpha_.05)
+#   sig_alpha_.05     n
+# 1             0    15
+# 2             1   132
+
+# What countries do not have significant slopes? 
+  # What are their average emissions from 2000 onward - slope? p-value?
+rising_emissions_slope_data %>% 
+  right_join(model_stats_2, by = 'Country') %>% 
+  group_by(Country) %>%
+  filter(Year >= 2000,
+         sig_alpha_.05 == 0) %>%
+  reframe(avg_emissions = mean(Total),
+          slope_estimate,
+          p_value) %>%
+  distinct()
+
+#   Country                   avg_emissions slope_estimate p_value
+# 1 Bermuda                          0.560          -0.023 0.477  
+# 2 Central African Republic         0.205          -0.016 0.625  
+# 3 Cuba                            26.3            -0.053 0.0941 
+# 4 Djibouti                         0.434           0.031 0.337  
+# 5 Eritrea                          0.604           0.001 0.981  
+# 6 Eswatini                         1.06            0.013 0.686  
+# 7 Faroe Islands                    0.680          -0.001 0.985  
+# 8 Gabon                            5.93           -0.039 0.222  
+# 9 Libya                           55.7             0.036 0.257  
+# 10 Micronesia                      0.139          -0.009 0.793  
+# 11 New Zealand                    35.3            -0.022 0.493  
+# 12 Palau                           0.217           0.003 0.921  
+# 13 Saint Pierre and Miquelon       0.0631          0.051 0.104  
+# 14 Singapore                      46.6             0.03  0.348  
+# 15 Wallis and Futuna Islands       0.0259         -0.029 0.376 
+  
+# *** Will omit the above countries to better distinguish countries with 
+#     rising vs declining emissions.
+
+# What countries have significant slopes, but need to be removed due to negative slope?
+  # avg emissions 2000 onward? slope? p-value?
+rising_emissions_slope_data %>% 
+  right_join(model_stats_2, by = 'Country') %>% 
+  group_by(Country) %>%
+  filter(Year >= 2000,
+         sig_alpha_.05 == 1,
+         positive_slope_indicator == 0) %>%
+  reframe(avg_emissions = mean(Total),
+          slope_estimate,
+          p_value) %>%
+  distinct()
+
+#   Country          avg_emissions slope_estimate p_value      
+# 1 Canada                 565.            -0.064 0.0391       
+# 2 Greenland                0.602         -0.092 0.00139      
+# 3 Macao SAR, China         1.43          -0.068 0.0262       
+# 4 Netherlands            165.            -0.125 0.0000003    
+# 5 Switzerland             41.3           -0.133 0.00000000423
+
+# *** Will omit for now. these slopes on normalized emissions are nearly 0
+
+# What countries have statistically significant rising emissions?
+model_stats_2 %>% 
+  filter(sig_alpha_.05 == 1, positive_slope_indicator ==1) %>%
+  pull(Country)
+
+# [1] "Afghanistan"             "Albania"               "Algeria"                          
+# [4] "Anguilla"                "Antarctica"            "Antigua and Barbuda"              
+# [7] "Argentina"               "Armenia"               "Australia"                        
+# [10] "Azerbaijan"             "Bahrain"               "Bangladesh"                       
+# [13] "Belize"                 "Benin"                 "Bhutan"                           
+# [16] "Bolivia"                "Uruguay"               "Bosnia and Herzegovina"           
+# [19] "Botswana"               "Brunei"                "Burkina Faso"                     
+# [22] "Burundi"                "Cabo Verde"            "Cambodia"                         
+# [25] "Cameroon"               "Chad"                  "Chile"                            
+# [28] "China"                  "Colombia"              "Comoros"                          
+# [31] "Congo"                  "Costa Rica"            "Côte d'Ivoire"                    
+# [34] "Dem. Rep. Congo"        "Dominica"              "Dominican Republic"               
+# [37] "Ecuador"                "Egypt"                 "El Salvador"                      
+# [40] "Ethiopia"               "Fiji"                  "French Polynesia"                 
+# [43] "Georgia"                "Ghana"                 "Grenada"                          
+# [46] "Guatemala"              "Guinea"                "Guinea-Bissau"                    
+# [49] "Guyana"                 "Honduras"              "Iceland"                          
+# [52] "India"                  "Indonesia"             "Iran"                             
+# [55] "Iraq"                   "Kazakhstan"            "Kenya"                            
+# [58] "Kiribati"               "Korea"                 "Kosovo"                           
+# [61] "Kuwait"                 "Lao PDR"               "Lesotho"                          
+# [64] "Liberia"                "Madagascar"            "Malawi"                           
+# [67] "Malaysia"               "Maldives"              "Mali"                             
+# [70] "Marshall Islands"       "Mauritania"            "Mauritius"                        
+# [73] "Mexico"                 "Mongolia"              "Montenegro"                       
+# [76] "Morocco"                "Mozambique"            "Myanmar"                          
+# [79] "Namibia"                "Nepal"                 "New Caledonia"                    
+# [82] "Nicaragua"              "Niger"                 "Nigeria"                          
+# [85] "Niue"                   "Oman"                  "Pakistan"                         
+# [88] "Panama"                 "Papua New Guinea"      "Paraguay"                         
+# [91] "Peru"                   "Philippines"           "Qatar"                            
+# [94] "Russia"                 "Rwanda"                "Saint Helena"                     
+# [97] "Samoa"                  "Saudi Arabia"          "Senegal"                          
+# [100] "Seychelles"            "Sierra Leone"          "Solomon Islands"                  
+# [103] "Somalia"               "South Sudan"           "St. Kitts and Nevis"              
+# [106] "Zambia"                "Sudan"                 "Suriname"           
+# [109] "São Tomé and Principe" "Taiwan"                "Tajikistan"                       
+# [112] "Tanzania"              "The Gambia"            "Timor-Leste"                      
+# [115] "Togo"                  "Tonga"                 "Tunisia"                          
+# [118] "Turkmenistan"          "Tuvalu"                "St. Vincent and the Grenadines"                          
+# [121] "Uganda"                "United Arab Emirates"  "Bonaire, Saint Eustatius and Saba"                         
+# [124] "Vanuatu"               "Viet Nam"              "West Bank and Gaza"               
+# [127] "Türkiye"
+
+final_rising_emissions <- model_stats_2 %>% 
+  filter(sig_alpha_.05 == 1, positive_slope_indicator ==1) %>%
+  pull(Country)
+
+
+# Modeling Dataframe ------------------------------------------------------
+
+modeling_df <- emissions_dt_2 %>%
+  # Removing the following variables from scope
+  select(-c('Cement', 'Flaring', 'Other')) %>%
+  filter(Year >= 2000) %>%
+  mutate(declining_emissions_indicator = 
+           case_when(Country %in% final_declining_emissions ~ 1,
+                     Country %in% final_rising_emissions ~ 0,
+                     TRUE ~ NA)) %>%
+  group_by(Country) %>%
+  # normalized total per country
+  mutate(norm_tot = scale(Total)[,1]) %>%
+  ungroup()
+
+# need to combine development indicators
+  # give completeness (by country?)
+
+count(modeling_df %>% distinct(Country, .keep_all = T), declining_emissions_indicator)
+#   declining_emissions_indicator     n
+# 1                             0   127
+# 2                             1    68
+# 3                            NA    20
+
+# Save dataframe
+# fwrite(modeling_df, file = 'C:\Users\WulfN\R Projects\Emissions-Data-Analysis\Data')
+
+
+
 # # Since you have time series data, consider deriving features that capture 
 # #   temporal patterns (e.g., trends, seasonal effects). You can use techniques 
 # #   like rolling averages or differences.
@@ -537,6 +703,7 @@ final_declining_emissions <- model_stats %>% filter(slope_estimate < 0, sig_alph
 # #   improve the regression model's performance.
 # #   standardize at the country level?
 # 
+
 
 
 
