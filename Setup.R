@@ -17,7 +17,7 @@
 ### Libraries
 library(librarian)
 shelf(tidyverse, data.table, future, furrr, 
-      plotly, viridis, svglite)
+      plotly, viridis, svglite, janitor)
 
 options(scipen = 999)
 
