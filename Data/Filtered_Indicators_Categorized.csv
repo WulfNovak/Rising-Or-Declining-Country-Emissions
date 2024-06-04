@@ -1,6 +1,4 @@
 category,indicator
-Public Services and Safety,CPIA equity of public resource use rating (1=low to 6=high)
-Public Services and Safety,CPIA quality of public administration rating (1=low to 6=high)
 Public Services and Safety,"Debt service on external debt, public and publicly guaranteed (PPG) (TDS, current US$)"
 Public Services and Safety,"External debt stocks, public and publicly guaranteed (PPG) (DOD, current US$)"
 Public Services and Safety,Informal payments to public officials (% of firms)
@@ -24,9 +22,6 @@ Governance and Institutional Quality,Control of Corruption: Estimate
 Governance and Institutional Quality,Control of Corruption: Number of Sources
 Governance and Institutional Quality,Control of Corruption: Percentile Rank
 Governance and Institutional Quality,Control of Corruption: Standard Error
-Governance and Institutional Quality,CPIA property rights and rule-based governance rating (1=low to 6=high)
-Governance and Institutional Quality,CPIA public sector management and institutions cluster average (1=low to 6=high)
-Governance and Institutional Quality,"CPIA transparency, accountability, and corruption in the public sector rating (1=low to 6=high)"
 Governance and Institutional Quality,"Net bilateral aid flows from DAC donors, European Union institutions (current US$)"
 Governance and Institutional Quality,Political Stability and Absence of Violence/Terrorism: Estimate
 Governance and Institutional Quality,Political Stability and Absence of Violence/Terrorism: Number of Sources
@@ -38,8 +33,6 @@ Governance and Institutional Quality,Rule of Law: Percentile Rank
 Governance and Institutional Quality,Rule of Law: Standard Error
 Governance and Institutional Quality,Women Business and the Law Index Score (scale 1-100)
 Environmental Sustainability,Combustible renewables and waste (% of total energy)
-Environmental Sustainability,CPIA business regulatory environment rating (1=low to 6=high)
-Environmental Sustainability,CPIA policy and institutions for environmental sustainability rating (1=low to 6=high)
 Environmental Sustainability,Renewable energy consumption (% of total final energy consumption)
 Environmental Sustainability,Renewable internal freshwater resources per capita (cubic meters)
 Environmental Sustainability,"Renewable internal freshwater resources, total (billion cubic meters)"
@@ -104,8 +97,6 @@ Economic Performance and Growth,Claims on central government (annual growth as %
 Economic Performance and Growth,"Claims on central government, etc. (% GDP)"
 Economic Performance and Growth,Claims on private sector (annual growth as % of broad money)
 Economic Performance and Growth,Coal rents (% of GDP)
-Economic Performance and Growth,CPIA economic management cluster average (1=low to 6=high)
-Economic Performance and Growth,CPIA macroeconomic management rating (1=low to 6=high)
 Economic Performance and Growth,Crop production index (2014-2016 = 100)
 Economic Performance and Growth,Current account balance (% of GDP)
 Economic Performance and Growth,Discrepancy in expenditure estimate of GDP (constant LCU)

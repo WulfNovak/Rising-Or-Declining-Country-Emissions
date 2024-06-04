@@ -2,7 +2,7 @@
 # Author: Wulf Novak
 #
 # Project: Development Indicators of Rising 
-#          and Declining Country Emissions
+#          and Declining country Emissions
 #
 # Date: 2024-05-03
 #
@@ -11,8 +11,9 @@
 # Sections:
 # - Emissions Data Prep
 # - World Development Indicators Prep
-# - Select Countries with Declining Total Emissions
-# - Select Countries with Rising Total Emissions
+# - Select Countries with Declining total Emissions
+# - Select Countries with Rising total Emissions
+# - Modeling Dataframe 
 # ##############################################################################
 
 # Data: World Emissions
@@ -26,110 +27,112 @@ source('./R Projects/Emissions-Data-Analysis/Setup.R')
 
 # Emissions Data Prep -----------------------------------------------------
 
-## Country level Emissions - primary dataset for analysis
+## country level Emissions - primary dataset for analysis
 emissions_dt <- fread('./datasets/Emissions/GCB2023v43_MtCO2_flat.csv') %>%
-  rename(Country_Code = `ISO 3166-1 alpha-3`)
+  rename(country_code = `ISO 3166-1 alpha-3`) %>%
+  clean_names()
 
-# Country Names (Cleaned) and Codes
-wdi_country <- fread('./datasets/world_data/WDICountry.csv') %>% 
-  select(`Country Code`, `Short Name`)
+# country Names (Cleaned) and Codes
+wdi_country <- fread('./datasets/world_data/WDIcountry.csv') %>% 
+  clean_names() %>%
+  select(`country_code`, `short_name`)
 
-## Per Capita Emissions - Currently Unneeded
+## per_capita Emissions - Currently Unneeded
 # per_capita <- fread('./datasets/Emissions/GCB2023v43_percapita_flat.csv')
 
 # Missing values for dataframes
 missing_vals(emissions_dt)
 #   variables    n_distinct qty_na perc_na qty_blank perc_blank qty_zero perc_zero
-# 1 Country             225      0     0           0          0        0      0   
-# 2 Country_Code        221      0     0           0          0        0      0   
-# 3 UN M49              225      0     0           0          0        0      0   
-# 4 Year                273      0     0           0          0        0      0   
-# 5 Total             17706  38253    62.3         0          0      257      0.42
-# 6 Coal              12097  38470    62.6         0          0     6765     11.0 
-# 7 Oil               11939  39655    64.6         0          0     2687      4.37
-# 8 Gas                6547  39683    64.6         0          0    13895     22.6 
-# 9 Cement             9227  37884    61.7         0          0    12319     20.1 
-# 10 Flaring           4191  39774    64.8         0          0    17164     27.9 
-# 11 Other             1565  59612    97.0         0          0      179      0.29
-# 12 Per Capita       17215  43882    71.4         0          0      284      0.46
+# 1 country             225      0     0           0          0        0      0   
+# 2 country_code        221      0     0           0          0        0      0   
+# 3 un_m49              225      0     0           0          0        0      0   
+# 4 year                273      0     0           0          0        0      0   
+# 5 total             17706  38253    62.3         0          0      257      0.42
+# 6 coal              12097  38470    62.6         0          0     6765     11.0 
+# 7 oil               11939  39655    64.6         0          0     2687      4.37
+# 8 gas                6547  39683    64.6         0          0    13895     22.6 
+# 9 cement             9227  37884    61.7         0          0    12319     20.1 
+# 10 flaring           4191  39774    64.8         0          0    17164     27.9 
+# 11 other             1565  59612    97.0         0          0      179      0.29
+# 12 per_capita       17215  43882    71.4         0          0      284      0.46
 
 # missing_vals(per_capita)
 #   variables          n_distinct qty_na perc_na qty_blank perc_blank qty_zero perc_zero
-# 1 Country                   225      0     0           0          0        0      0   
+# 1 country                   225      0     0           0          0        0      0   
 # 2 ISO 3166-1 alpha-3        221      0     0           0          0        0      0   
-# 3 UN M49                    225      0     0           0          0        0      0   
-# 4 Year                      273      0     0           0          0        0      0   
-# 5 Total                   17160  44092    71.8         0          0       57      0.09
-# 6 Coal                    11091  44226    72           0          0     5861      9.54
-# 7 Oil                     16026  44309    72.1         0          0      943      1.54
-# 8 Gas                      7001  44399    72.3         0          0     9957     16.2 
-# 9 Cement                   9877  46260    75.3         0          0     5022      8.18
-# 10 Flaring                 4335  44500    72.4         0          0    12406     20.2 
-# 11 Other                   1629  59758    97.3         0          0       33      0.05
+# 3 un_m49                    225      0     0           0          0        0      0   
+# 4 year                      273      0     0           0          0        0      0   
+# 5 total                   17160  44092    71.8         0          0       57      0.09
+# 6 coal                    11091  44226    72           0          0     5861      9.54
+# 7 oil                     16026  44309    72.1         0          0      943      1.54
+# 8 gas                      7001  44399    72.3         0          0     9957     16.2 
+# 9 cement                   9877  46260    75.3         0          0     5022      8.18
+# 10 flaring                 4335  44500    72.4         0          0    12406     20.2 
+# 11 other                   1629  59758    97.3         0          0       33      0.05
 
-range(emissions_dt$Year)
+range(emissions_dt$year)
 # 1750 to 2022
 
-### Any 'Country' level stats to not consider? 
+### Any 'country' level stats to not consider? 
 
-# emissions_dt %>% distinct(Country) %>% View()
-# International Transport, Global, Kuwait Oil Fires.
+# emissions_dt %>% distinct(country) %>% View()
+# International Transport, Global, Kuwait oil Fires.
 
 # Adjust Japan emissions to include Ryukyu Islands emissions
 # for the 1952-1972 time period they were reported separately.
 
 japan_adj <- emissions_dt %>%
-  filter(Country %in% c('Ryukyu Islands', 'Japan')) %>%
-  mutate(Country = ifelse(Country == 'Ryukyu Islands', 'Japan', Country)) %>%
-  group_by(Country, Year) %>%
-  reframe(Country, 
-          Country_Code = 'JPN',
-          Year,
-          Total = sum(Total, na.rm = T), 
-          Coal = sum(Coal, na.rm = T),
-          Oil = sum(Oil, na.rm = T),
-          Gas = sum(Gas, na.rm = T),
-          Cement = sum(Cement, na.rm = T),
-          Flaring = sum(Flaring, na.rm = T),
-          Other = sum(Other, na.rm = T),
-          `Per Capita` = sum(`Per Capita`, na.rm = T)
+  filter(country %in% c('Ryukyu Islands', 'Japan')) %>%
+  mutate(country = ifelse(country == 'Ryukyu Islands', 'Japan', country)) %>%
+  group_by(country, year) %>%
+  reframe(country, 
+          country_code = 'JPN',
+          year,
+          total = sum(total, na.rm = T), 
+          coal = sum(coal, na.rm = T),
+          oil = sum(oil, na.rm = T),
+          gas = sum(gas, na.rm = T),
+          cement = sum(cement, na.rm = T),
+          flaring = sum(flaring, na.rm = T),
+          other = sum(other, na.rm = T),
+          `per_capita` = sum(`per_capita`, na.rm = T)
   ) %>%
-  distinct(Country, Year, Total, .keep_all = T)
+  distinct(country, year, total, .keep_all = T)
 
-# Update Country level emissions with Japan adjustment and remove non-countries
+# Update country level emissions with Japan adjustment and remove non-countries
 emissions_dt_2 <- emissions_dt %>%
-  left_join(wdi_country, by = c('Country_Code' = 'Country Code')) %>%
-  filter(!Country %in% c('International Transport', 'Global', 'Kuwaiti Oil Fires', 
+  left_join(wdi_country, by = c('country_code' = 'country_code')) %>%
+  filter(!country %in% c('International Transport', 'Global', 'Kuwaiti oil Fires', 
                          'Ryukyu Islands', 'Japan', 'International Shipping', 
                          'International Aviation', 'Leeward Islands',
                          'Pacific Islands (Palau)'
                          )
   ) %>%
   bind_rows(japan_adj) %>% 
-  filter(!Total == 0) %>% # Remove 0 Total emission observations
+  filter(!total == 0) %>% # Remove 0 total emission observations
   # The following countries had 0 emissions from 2000 onward:
   # 1. Christmas Island
   # 2. Panama Canal Zone
-  mutate(Country = 
-           case_when(!is.na(Country) & !is.na(`Short Name`) ~ `Short Name`, 
-                     !is.na(`Short Name`) ~ `Short Name`,
-                     is.na(`Short Name`) ~ Country)) %>% # Replace country name with accurate wdi country names
-  select(-c('Short Name', 'UN M49'))
+  mutate(country = 
+           case_when(!is.na(country) & !is.na(`short_name`) ~ `short_name`, 
+                     !is.na(`short_name`) ~ `short_name`,
+                     is.na(`short_name`) ~ country)) %>% # Replace country name with accurate wdi country names
+  select(-c('short_name', 'un_m49'))
 
 # missing_vals(emissions_dt_2)
 
 ## Write emissions_dt_2 to datafile
 fwrite(emissions_dt_2, file = './datasets/Emissions/emissions_dt_2.rds')
 
-### Analysis of Total Emissions by Country
+### Analysis of total Emissions by country
 country_mu_sd <- emissions_dt_2 %>% 
-  group_by(Country) %>%
+  group_by(country) %>%
   reframe(
-    mean_total = mean(Total, na.rm = T),
-    sd_total = sd(Total, na.rm = T)
+    mean_total = mean(total, na.rm = T),
+    sd_total = sd(total, na.rm = T)
     )
 
-summary(country_mu_sd %>% select(-Country))
+summary(country_mu_sd %>% select(-country))
 #        mean_total           sd_total       
 # Min.   :   0.0056   Min.   :   0.002  
 # 1st Qu.:   0.6103   1st Qu.:   0.429  
@@ -140,20 +143,20 @@ summary(country_mu_sd %>% select(-Country))
 
 # World Development Indicators Prep ---------------------------------------
 
-## Development Indicators by Year
+## Development Indicators by year
 wdi_csv <- fread('./datasets/world_data/WDICSV.csv', header = T) %>%
-  filter(`Country Code` %in% emissions_dt_2$Country_Code)
+  filter(`Country Code` %in% emissions_dt_2$country_code)
 
 # Countries/islands omitted due to lack of development indicator data
 emissions_dt_2 %>% 
-  filter(!Country_Code %in% wdi_country$`Country Code`,
-         Year >= 2000) %>% #
-  group_by(Country) %>%
-  mutate(mean_total_emissions = round(mean(Total, na.rm = T), 2)) %>%
+  filter(!country_code %in% wdi_country$`country_code`,
+         year >= 2000) %>% #
+  group_by(country) %>%
+  mutate(mean_total_emissions = round(mean(total, na.rm = T), 2)) %>%
   ungroup() %>%
-  distinct(Country, mean_total_emissions)
+  distinct(country, mean_total_emissions)
 
-# Country                           mean_total_emissions
+# country                           mean_total_emissions
 # 1 Anguilla                                          0.12
 # 2 Antarctica                                        0.01
 # 3 Bonaire, Saint Eustatius and Saba                 0.08
@@ -213,7 +216,9 @@ econ_pg <- econ_pg %>% filter(!grepl(', male|, female|\\(current |emissions|NPIS
 # too many factors here, consider simple elastic net model to eliminate variables
 
 ### Filter wdi_csv dataframe by development indicator
-all_ind_filt <- bind_rows(pub_ss, gov_iq, env_sus, inc_pov, econ_pg)
+all_ind_filt <- bind_rows(pub_ss, gov_iq, env_sus, inc_pov, econ_pg) %>%
+  filter(!grepl('CPIA', # known low coverage for these variables 
+                ignore.case = T, indicator))
 
 # Saving to Reference later
 fwrite(all_ind_filt, file = './R Projects/Emissions-Data-Analysis/Data/Filtered_Indicators_Categorized.csv')
@@ -253,8 +258,8 @@ many_missing <- missing_indicators %>%
   pull(indicator_name)
 # 
 # # [1] "Account ownership at a financial institution or with a mobile-money-service provider (% of population ages 15+)"  
-# # [2] "Annualized average growth rate in per capita real survey mean consumption or income, bottom 40% of population (%)"
-# # [3] "Annualized average growth rate in per capita real survey mean consumption or income, total population (%)"        
+# # [2] "Annualized average growth rate in per_capita real survey mean consumption or income, bottom 40% of population (%)"
+# # [3] "Annualized average growth rate in per_capita real survey mean consumption or income, total population (%)"        
 # # [4] "Child employment in agriculture (% of economically active children ages 7-14)"                                    
 # # [5] "Child employment in manufacturing (% of economically active children ages 7-14)"                                  
 # # [6] "Child employment in services (% of economically active children ages 7-14)"                                       
@@ -268,15 +273,15 @@ many_missing <- missing_indicators %>%
 
 wdi_filtered_2 <- wdi_filtered %>% 
   filter(!`Indicator Name` %in% many_missing) %>%
-  # omitting 2023 because development indicators are only to year 2022
+  # omitting 2023 because emissions data is only to year 2022
   select(-c(`Indicator Code`, `2023`)) %>%
-  rename(Country_Name = `Country Name`,
-         Country_Code = `Country Code`,
+  rename(country_Name = `country Name`,
+         country_code = `country_code`,
          Indicator_Name = `Indicator Name`) %>%
-  pivot_longer(cols = `1960`:`2022`, names_to = "Year") %>%
-  filter(Year >= 2000) %>%
+  pivot_longer(cols = `1960`:`2022`, names_to = "year") %>%
+  filter(year >= 2000) %>%
   # perc NAs by indicator
-  group_by(Country_Name, Indicator_Name) %>%
+  group_by(country_Name, Indicator_Name) %>%
   mutate(perc_na = round(sum(is.na(value) * 100) / n(), 2)) %>%
   ungroup() %>%
   group_by(Indicator_Name) %>%
@@ -302,13 +307,84 @@ rm(wdi_filtered)
 gc()
 
 ### Num groups, num features, num df
-n_distinct(wdi_filtered_2$Country_Name) 
+n_distinct(wdi_filtered_2$country_Name) 
 # 204 countries
 
 n_distinct(wdi_filtered_2$Indicator_Name) 
 # 183 indicators
 
-# Method for selecting highly coorelated variables:
+# Pivot indicator variables to (country, year, Indicator_1, Indicator_2, etc,) form
+wdi_filtered_3 <- suppressWarnings({wdi_filtered_2 %>%
+  select(-c('perc_na', 'global_perc_na')) %>%
+  group_by(Country_Name) %>%
+  pivot_wider(names_from = 'Indicator_Name', values_from = 'value') %>%
+  clean_names() %>%
+  # Variables with the following key words have large absolute value numbers that 
+  # vary greatly from other variables which typically give a percent, index, percentile.
+  # Normalizing for each country
+  mutate(
+    across( 
+      .cols = names(.)[grep("income_constant|income_current|capita_constant|capita_current|metric_tons|constant_LCU|international|kWh|current_US|cubic_meters", 
+                            names(.), ignore.case = TRUE)],
+      .fns = ~case_when(
+        # min(NA) and max(NA) give 'inf', changing to zero
+        # to handle variables where all observations are NA
+        is.infinite(min(., na.rm = T)) == TRUE ~ 0, # ** Can ignore warnings
+        is.infinite(max(., na.rm = T)) == TRUE ~ 0, # ** Can ignore warnings
+        # case when min = max = 0 to avoid 0/0 = NaN
+        (min(., na.rm = T) == 0 & max(., na.rm = T) == 0) ~ 0,
+        # if min = max = value, then NA (otherwise it's NaN)
+        (min(., na.rm = T) == max(., na.rm = T)) ~ NA,
+        # (value - min(value) / max(value) - min(value)) * 100
+        TRUE ~ (.-min(., na.rm = TRUE)) / (max(., na.rm = TRUE) - min(., na.rm = TRUE)) * 100),
+      .names = "norm_{col}" 
+    )
+  ) %>%
+    # Removing variables where the normalized version now exists
+    select( # There had to be a better way!
+      -c(
+      "adjusted_net_national_income_constant_2015_us",
+      "adjusted_net_national_income_current_us",                                 
+      "adjusted_net_national_income_per_capita_constant_2015_us",                       
+      "adjusted_net_national_income_per_capita_current_us",                             
+      "aquaculture_production_metric_tons",                                      
+      "capture_fisheries_production_metric_tons",                                       
+      "cereal_production_metric_tons",
+      "debt_service_on_external_debt_public_and_publicly_guaranteed_ppg_tds_current_us",
+      "discrepancy_in_expenditure_estimate_of_gdp_constant_lcu",                  
+      "exports_of_goods_services_and_primary_income_bo_p_current_us",        
+      "external_debt_stocks_public_and_publicly_guaranteed_ppg_dod_current_us",
+      "gdp_constant_lcu",                                               
+      "gdp_per_capita_constant_2015_us",                                                
+      "gdp_per_capita_constant_lcu",                                
+      "gdp_per_capita_ppp_constant_2017_international",
+      "gdp_ppp_constant_2017_international",                                            
+      "gross_domestic_income_constant_lcu",                  
+      "imports_of_goods_services_and_primary_income_bo_p_current_us",
+      "net_bilateral_aid_flows_from_dac_donors_european_union_institutions_current_us",
+      "net_primary_income_bo_p_current_us",                        
+      "net_primary_income_net_income_from_abroad_constant_lcu",
+      "net_primary_income_net_income_from_abroad_current_us",                           
+      "ppp_conversion_factor_gdp_lcu_per_international",                                
+      "primary_income_payments_bo_p_current_us",                                        
+      "primary_income_receipts_bo_p_current_us",                   
+      "public_private_partnerships_investment_in_energy_current_us",               
+      "renewable_internal_freshwater_resources_per_capita_cubic_meters",            
+      "renewable_internal_freshwater_resources_total_billion_cubic_meters",             
+      "total_fisheries_production_metric_tons"
+      )
+    ) %>%
+    mutate(across(.cols = -c('country_code', 'year'),
+                  .fns = ~ lag(.x, n = 1), 
+                  .names = "lag_{col}")) %>%
+  ungroup() %>%
+  mutate(year = as.integer(year)) 
+})
+
+missing_vals(wdi_filtered_3)
+# Perhaps remove variables with 70% or more NA?
+
+# Method for selecting highly correlated variables:
 # ** Do for both Rising / Declining countries
 # For all development indicators, find country with greatest coverage
 # Reduce variable to available NAs (hopefully there is a lot of coverage)
@@ -322,7 +398,7 @@ n_distinct(wdi_filtered_2$Indicator_Name)
 # Drastically better coverage of development indicators from 2000 onwards
 
 
-# Select Countries with Declining Total Emissions -------------------------
+# Select Countries with Declining total Emissions -------------------------
 
 # Declining Emissions Definition: 
 # 1. Max year of emissions cannot be 2019 onward 
@@ -331,28 +407,28 @@ n_distinct(wdi_filtered_2$Indicator_Name)
 #    statistically significant, for data of max year of emissions onward
 
 reduc_emissions_countries <- emissions_dt_2 %>%
-  select(Country, Year, Total) %>%
-  group_by(Country) %>%
+  select(country, year, total) %>%
+  group_by(country) %>%
   mutate(
-    max_total_emissions = max(Total, na.rm = T),
+    max_total_emissions = max(total, na.rm = T),
     # indicator for year of max emissions
-    year_of_max_total_emissions_indicator = case_when(Total == max_total_emissions ~ 1, 
+    year_of_max_total_emissions_indicator = case_when(total == max_total_emissions ~ 1, 
                                             TRUE ~ 0)
   ) %>%
   filter(
     year_of_max_total_emissions_indicator == 1,
     # remove countries whose max emitting year is within past 3 years,
-    Year < max(Year, na.rm = T) - 3 # *** Omits 91 countries
+    year < max(year, na.rm = T) - 3 # *** Omits 91 countries
   ) %>%
   mutate(# if multiple periods of emission decline, choose most recent
-         year_of_max_total_emissions = max(Year, na.rm = T)
+         year_of_max_total_emissions = max(year, na.rm = T)
          ) %>%
   ungroup() %>%
-  distinct(Country, year_of_max_total_emissions, .keep_all = T)
+  distinct(country, year_of_max_total_emissions, .keep_all = T)
 
 # 87 Countries omitted due to year requirement:
-emissions_dt_2 %>% filter(!Country %in% c(reduc_emissions_countries %>% pull(Country))) %>% 
-  distinct(Country) %>% pull()
+emissions_dt_2 %>% filter(!country %in% c(reduc_emissions_countries %>% pull(country))) %>% 
+  distinct(country) %>% pull()
 
 # [1] "Afghanistan"          "Algeria"              "Anguilla"            
 # [4] "Argentina"            "Australia"            "Bahrain"             
@@ -384,7 +460,7 @@ emissions_dt_2 %>% filter(!Country %in% c(reduc_emissions_countries %>% pull(Cou
 # [82] "Uganda"               "United Arab Emirates" "Tanzania"            
 # [85] "Vanuatu"              "Viet Nam"             "Zambia" 
 
-max_year_emissions <- reduc_emissions_countries %>% select(Country, year_of_max_total_emissions)
+max_year_emissions <- reduc_emissions_countries %>% select(country, year_of_max_total_emissions)
 
 ### Finding slope and statistical significance
 # By country, filter to data ranging from max year to 2022
@@ -393,28 +469,28 @@ max_year_emissions <- reduc_emissions_countries %>% select(Country, year_of_max_
 
 # Prepare data from year of max total emissions onward
 emissions_slope_data <- emissions_dt_2 %>%
-  left_join(max_year_emissions, by = 'Country') %>%
-  select(Country, Year, year_of_max_total_emissions, Total) %>%
-  group_by(Country) %>%
+  left_join(max_year_emissions, by = 'country') %>%
+  select(country, year, year_of_max_total_emissions, total) %>%
+  group_by(country) %>%
   filter(# remove countries omitted by year requirement from consideration
-         Country %in% c(max_year_emissions %>% pull(Country)),
-         Year >= year_of_max_total_emissions) %>%
-  mutate(norm_tot = scale(Total)[,1]) # normalize total by year 
+         country %in% c(max_year_emissions %>% pull(country)),
+         year >= year_of_max_total_emissions) %>%
+  mutate(norm_tot = scale(total)[,1]) # normalize total by year 
 
 # Create models and summaries for each country
 model_summaries <- emissions_slope_data %>%
-  group_by(Country) %>%
+  group_by(country) %>%
   nest() %>%
   reframe(
-    model = map(data, .f = ~ lm(norm_tot ~ Year, data = .x)),
+    model = map(data, .f = ~ lm(norm_tot ~ year, data = .x)),
     summary = map(model, broom::tidy)
   )
 
-# Unpack critical information (Country, slope estimate, p-value, significance)
+# Unpack critical information (country, slope estimate, p-value, significance)
 model_stats <- model_summaries %>%
-  select(Country, summary) %>%
+  select(country, summary) %>%
   unnest(summary) %>%
-  group_by(Country) %>%
+  group_by(country) %>%
   reframe(
     slope_estimate = round(estimate[2], 3),
     p_value = format.pval(p.value[2], digits = 3),
@@ -422,7 +498,7 @@ model_stats <- model_summaries %>%
                               p_value > .05 ~ 0)
   ) %>% 
   ungroup() %>%
-  distinct(Country, .keep_all = T)
+  distinct(country, .keep_all = T)
 
 # Count of countries with a statistically significant slope estimate: 72
 count(model_stats, sig_alpha_.05)
@@ -431,7 +507,7 @@ count(model_stats, sig_alpha_.05)
 # 2             1    72
 
 # Countries omitted due to insignificant slope OR positive slope
-model_stats %>% filter(slope_estimate > 0 | sig_alpha_.05 == 0) %>% pull(Country)
+model_stats %>% filter(slope_estimate > 0 | sig_alpha_.05 == 0) %>% pull(country)
 
 # [1] "Albania"         "Antarctica"               "Antigua and Barbuda"              
 # [4] "Armenia"         "Azerbaijan"               "Bermuda"                          
@@ -456,7 +532,7 @@ model_stats %>% filter(slope_estimate > 0 | sig_alpha_.05 == 0) %>% pull(Country
 # [61] "Tajikistan"  
 
 # Countries with significant AND negative slope - Keepers!
-model_stats %>% filter(slope_estimate < 0, sig_alpha_.05 == 1) %>% pull(Country)
+model_stats %>% filter(slope_estimate < 0, sig_alpha_.05 == 1) %>% pull(country)
 # [1] "Andorra"                   "Angola"                    "Aruba"                    
 # [4] "Austria"                   "Barbados"                  "Belarus"                  
 # [7] "Belgium"                   "Brazil"                    "British Virgin Islands"   
@@ -481,68 +557,68 @@ model_stats %>% filter(slope_estimate < 0, sig_alpha_.05 == 1) %>% pull(Country)
 # [64] "United Kingdom"            "United States"             "Uzbekistan"               
 # [67] "Venezuela"                 "Yemen"                     "Zimbabwe"
 
-final_declining_emissions <- model_stats %>% filter(slope_estimate < 0, sig_alpha_.05 == 1) %>% pull(Country)
+final_declining_emissions <- model_stats %>% filter(slope_estimate < 0, sig_alpha_.05 == 1) %>% pull(country)
 
-# 69 countries total
+# 69 countries total with declining emissions
 
-# Select Countries with Rising Total Emissions ----------------------------
+# Select Countries with Rising total Emissions ----------------------------
 
 # Of countries without declining total emissions, which have rising total emissions?
 rising_emissions_candidates <- emissions_dt_2 %>%
-  select(Country, Year, Total) %>%
-  filter(!Country %in% final_declining_emissions) %>%
-  group_by(Country) %>%
+  select(country, year, total) %>%
+  filter(!country %in% final_declining_emissions) %>%
+  group_by(country) %>%
   mutate(
-    max_total_emissions = max(Total, na.rm = T),
+    max_total_emissions = max(total, na.rm = T),
     # indicator for year of max emissions
-    year_of_max_total_emissions_indicator = case_when(Total == max_total_emissions ~ 1, 
+    year_of_max_total_emissions_indicator = case_when(total == max_total_emissions ~ 1, 
                                                       TRUE ~ 0)) %>%
   filter(year_of_max_total_emissions_indicator == 1) %>%
   mutate(# if multiple periods of max emissions, choose most recent
-    year_of_max_total_emissions = max(Year, na.rm = T)
+    year_of_max_total_emissions = max(year, na.rm = T)
   ) %>%
   ungroup() %>%
-  distinct(Country, year_of_max_total_emissions)
+  distinct(country, year_of_max_total_emissions)
 
 # prepare country-level slope data
 rising_emissions_slope_data <- emissions_dt_2 %>%
-  left_join(rising_emissions_candidates, by = 'Country') %>%
-  select(Country, Year, year_of_max_total_emissions, Total) %>%
-  group_by(Country) %>%
+  left_join(rising_emissions_candidates, by = 'country') %>%
+  select(country, year, year_of_max_total_emissions, total) %>%
+  group_by(country) %>%
   filter(
     # remove countries omitted by year requirement from consideration
-    Country %in% c(rising_emissions_candidates %>% pull(Country)),
+    country %in% c(rising_emissions_candidates %>% pull(country)),
     # Calculate slope from minimum of 1. year with max emissions OR 2. 2000
       # To assure plentiful data for countries whose max emissions year is > 2000
-    Year >= case_when(year_of_max_total_emissions < 2000 ~ year_of_max_total_emissions,
+    year >= case_when(year_of_max_total_emissions < 2000 ~ year_of_max_total_emissions,
                       year_of_max_total_emissions >= 2000 ~ 2000),
     # remove countries whose total emissions are 0 after 2000
-    case_when(Year >= 2000 & Total != 0 ~ TRUE,
-              Year >= 2000 & Total == 0 ~ FALSE)
+    case_when(year >= 2000 & total != 0 ~ TRUE,
+              year >= 2000 & total == 0 ~ FALSE)
       # The following countries are removed: 
       # 1. "Panama Canal Zone"
       # 2. "Leeward Islands"
       # 3. "Pacific Islands (Palau)"
     ) %>%
-  mutate(norm_tot = scale(Total)[,1]) %>%
+  mutate(norm_tot = scale(total)[,1]) %>%
   ungroup()
 
 # Create models and summaries for each country
 model_summaries_2 <- rising_emissions_slope_data %>%
-  group_by(Country) %>%
+  group_by(country) %>%
   nest() %>%
   reframe(
-    model = map(data, .f = ~ lm(norm_tot ~ Year, data = .x)),
+    model = map(data, .f = ~ lm(norm_tot ~ year, data = .x)),
     summary = map(model, broom::tidy)
   )
 
-# Unpack critical information (Country, slope estimate, p-value, significance)
+# Unpack critical information (country, slope estimate, p-value, significance)
 model_stats_2 <- model_summaries_2 %>%
-  select(Country, summary) %>%
+  select(country, summary) %>%
   unnest(summary) %>%
-  group_by(Country) %>%
+  group_by(country) %>%
   reframe(
-    Country,
+    country,
     slope_estimate = round(estimate[2], 3),
     p_value = format.pval(p.value[2], digits = 3),
     sig_alpha_.05 = case_when(p_value <= .05 ~ 1,
@@ -551,7 +627,7 @@ model_stats_2 <- model_summaries_2 %>%
                                          slope_estimate <= 0 ~ 0)
   ) %>% 
   ungroup() %>%
-  distinct(Country, .keep_all = T)
+  distinct(country, .keep_all = T)
 
 # Count of countries with significant slopes
 count(model_stats_2 , sig_alpha_.05)
@@ -562,16 +638,16 @@ count(model_stats_2 , sig_alpha_.05)
 # What countries do not have significant slopes? 
   # What are their average emissions from 2000 onward - slope? p-value?
 rising_emissions_slope_data %>% 
-  right_join(model_stats_2, by = 'Country') %>% 
-  group_by(Country) %>%
-  filter(Year >= 2000,
+  right_join(model_stats_2, by = 'country') %>% 
+  group_by(country) %>%
+  filter(year >= 2000,
          sig_alpha_.05 == 0) %>%
-  reframe(avg_emissions = mean(Total),
+  reframe(avg_emissions = mean(total),
           slope_estimate,
           p_value) %>%
   distinct()
 
-#   Country                   avg_emissions slope_estimate p_value
+#   country                   avg_emissions slope_estimate p_value
 # 1 Bermuda                          0.560          -0.023 0.477  
 # 2 Central African Republic         0.205          -0.016 0.625  
 # 3 Cuba                            26.3            -0.053 0.0941 
@@ -594,17 +670,17 @@ rising_emissions_slope_data %>%
 # What countries have significant slopes, but need to be removed due to negative slope?
   # avg emissions 2000 onward? slope? p-value?
 rising_emissions_slope_data %>% 
-  right_join(model_stats_2, by = 'Country') %>% 
-  group_by(Country) %>%
-  filter(Year >= 2000,
+  right_join(model_stats_2, by = 'country') %>% 
+  group_by(country) %>%
+  filter(year >= 2000,
          sig_alpha_.05 == 1,
          positive_slope_indicator == 0) %>%
-  reframe(avg_emissions = mean(Total),
+  reframe(avg_emissions = mean(total),
           slope_estimate,
           p_value) %>%
   distinct()
 
-#   Country          avg_emissions slope_estimate p_value      
+#   country          avg_emissions slope_estimate p_value      
 # 1 Canada                 565.            -0.064 0.0391       
 # 2 Greenland                0.602         -0.092 0.00139      
 # 3 Macao SAR, China         1.43          -0.068 0.0262       
@@ -616,7 +692,7 @@ rising_emissions_slope_data %>%
 # What countries have statistically significant rising emissions?
 model_stats_2 %>% 
   filter(sig_alpha_.05 == 1, positive_slope_indicator ==1) %>%
-  pull(Country)
+  pull(country)
 
 # [1] "Afghanistan"             "Albania"               "Algeria"                          
 # [4] "Anguilla"                "Antarctica"            "Antigua and Barbuda"              
@@ -664,35 +740,65 @@ model_stats_2 %>%
 
 final_rising_emissions <- model_stats_2 %>% 
   filter(sig_alpha_.05 == 1, positive_slope_indicator ==1) %>%
-  pull(Country)
+  pull(country)
 
 
 # Modeling Dataframe ------------------------------------------------------
 
+# Combine emissions and indicator data
 modeling_df <- emissions_dt_2 %>%
   # Removing the following variables from scope
-  select(-c('Cement', 'Flaring', 'Other')) %>%
-  filter(Year >= 2000) %>%
+  select(-c('cement', 'flaring', 'other')) %>%
+  filter(year >= 2000) %>%
   mutate(declining_emissions_indicator = 
-           case_when(Country %in% final_declining_emissions ~ 1,
-                     Country %in% final_rising_emissions ~ 0,
+           case_when(country %in% final_declining_emissions ~ 1,
+                     country %in% final_rising_emissions ~ 0,
                      TRUE ~ NA)) %>%
-  group_by(Country) %>%
+  group_by(country) %>%
   # normalized total per country
-  mutate(norm_tot = scale(Total)[,1]) %>%
-  ungroup()
+  mutate(norm_tot = scale(total)[,1]) %>%
+  ungroup() %>%
+  left_join(wdi_filtered_3, by = c('country_code', 'year')) %>%
+  filter(
+    # If country name from wdi dataset is NA, there is no indicator data
+    !is.na(country_name) 
+    # Removed the following Countries: Also referenced in the wdi prep section
+    # [1] "Anguilla"                          "Antarctica"                       
+    # [3] "Bonaire, Saint Eustatius and Saba" "Cook Islands"                     
+    # [5] "Kosovo"                            "Montserrat"                       
+    # [7] "Niue"                              "Saint Helena"                     
+    # [9] "Saint Pierre and Miquelon"         "Taiwan"                           
+    # [11] "Wallis and Futuna Islands"
+    ) %>%
+  select(-country_name) # Duplicate of 'country'
+  
+# Countries without development data
 
-# need to combine development indicators
-  # give completeness (by country?)
+# The following countries are omitted by the Join:
+# [1] "Bahamas, The"              "Brunei Darussalam"         "Congo, Dem. Rep."         
+# [4] "Congo, Rep."               "Cote d'Ivoire"             "Curacao"                  
+# [7] "Egypt, Arab Rep."          "Gambia, The"               "Iran, Islamic Rep."       
+# [10] "Korea, Dem. People's Rep." "Korea, Rep."               "Micronesia, Fed. Sts."    
+# [13] "Russian Federation"        "Sao Tome and Principe"     "Turkiye"                  
+# [16] "Venezuela, RB"             "Yemen, Rep." 
 
-count(modeling_df %>% distinct(Country, .keep_all = T), declining_emissions_indicator)
+
+count(modeling_df %>% distinct(country, .keep_all = T), declining_emissions_indicator)
 #   declining_emissions_indicator     n
-# 1                             0   127
-# 2                             1    68
-# 3                            NA    20
+# 1                             0   120 
+# 2                             1    66 ***
+# 3                            NA    18 
+
+# *** There are only 66 countries of the 69 found with declining emissions. 
+# The removed countries are 'Christmas Island', 'Cook Islands', and 'Montserrat'
+# All were removed due to lack of development indicator data from 2000 onward
+
+
 
 # Save dataframe
 # fwrite(modeling_df, file = 'C:\Users\WulfN\R Projects\Emissions-Data-Analysis\Data')
+
+
 
 
 
