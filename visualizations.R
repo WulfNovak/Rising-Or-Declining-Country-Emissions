@@ -2,7 +2,7 @@
 # Author: Wulf Novak
 #
 # Project: Development Indicators of Rising 
-#          and Declining Country Emissions
+#          and Declining country Emissions
 #
 # Date: 2024-05-24
 #
@@ -19,21 +19,32 @@
 
 source('./R Projects/Emissions-Data-Analysis/Setup.R')
 
-mt_c02_adj <- fread(file = './datasets/Emissions/mt_c02_adj.rds')
-
+# read in data
+emissions_dt_2 <- fread(file = './datasets/Emissions/emissions_dt_2.rds')
+modeling_df <- fread(file = './datasets/Emissions/modeling_df.rds') %>% 
+  select(country, country_code, year, total, declining_emissions_indicator, norm_tot,
+         slope_estimate_rising, slope_estimate_declining, 
+         sig_alpha_.05_rising, sig_alpha_.05_declining) %>%
+  group_by(year, declining_emissions_indicator) %>%
+  # for rising/declining emissions plots
+  mutate(avg_emissions_by_year = mean(total, na.rm = T), 
+         norm_avg_emissions_by_year = mean(norm_tot, na.rm = T)) %>%
+  ungroup()
+  
 # Indicator variables, model results
 
-# Rising Emission Visualizatoin -------------------------------------------
 
-## Df for plotting Total Emissions by Country Over Time
-plot_df <- mt_c02_adj %>%
-  group_by(Country) %>%
-  mutate(tot_emissions = sum(Total, na.rm = T)) %>%
+# C02 Emissions Visualization ---------------------------------------------
+
+## Df for plotting total Emissions by country Over Time
+plot_df <- emissions_dt_2 %>%
+  group_by(country) %>%
+  mutate(tot_emissions = sum(total, na.rm = T)) %>%
   ungroup() %>%
   transmute(
-    Country,
-    Year, 
-    Total, 
+    country,
+    year, 
+    total, 
     tot_emissions,
     # Calculate and Create variables for quantiles
     upper_3rd = quantile(tot_emissions, prob = .75, na.rm = T) %>% unname(),
@@ -48,54 +59,54 @@ plot_df <- mt_c02_adj %>%
   ) %>%
   select(-c(starts_with('upper'), tot_emissions))
 
-## Total Emissions by Country Over Time
+## total Emissions by country Over Time
 # Perhaps this is only useful as a plotly graph
-ggplot(plot_df %>% filter(Year >= 1900), #country_emissions_quantile == 4) , 
-       aes(x = Year, y = Total, color = Country)) +
+ggplot(plot_df %>% filter(year >= 1900), #country_emissions_quantile == 4) , 
+       aes(x = year, y = total, color = country)) +
   geom_line(show.legend = FALSE) + 
-  facet_wrap(~country_emissions_quantile,scales = 'free_y') + 
+  facet_wrap(~country_emissions_quantile, scales = 'free_y') + 
   scale_y_continuous(labels = scales::comma, n.breaks = 7) +
   scale_x_continuous(expand = c(0.01, 0)) + 
   scale_color_viridis_d(option = 'E') +
   theme_minimal() + 
   theme(axis.text.y = element_text(angle = 37)) +
   labs(
-    title = 'C02 Emissions by Country over Time',
-    subtitle = 'Year 1900 Onwards',
-    y = 'Total C02 Emissions'
+    title = 'C02 Emissions by country over Time',
+    subtitle = 'year 1900 Onwards',
+    y = 'total C02 Emissions'
   )
 
 # Countries that emit the most C02 generally began emitting before the 1950s
 
-## Coal, Oil, Gas, Cement, and Other as percentage of Total World Emissions over time
-plot_df_2 <- mt_c02_adj %>%
-  group_by(Year) %>%
+## coal, oil, gas, cement, and other as percentage of total World Emissions over time
+plot_df_2 <- emissions_dt_2 %>%
+  group_by(year) %>%
   transmute(
-    Year,
-    `Global Total` = sum(Total, na.rm = T),
-    `Global Coal` = sum(Coal, na.rm = T),
-    `Global Oil` = sum(Oil, na.rm = T),
-    `Global Gas` = sum(Gas, na.rm = T),
-    `Global Cement` = sum(Cement, na.rm = T),
-    `Global Flaring` = sum(Flaring, na.rm = T),
-    `Global Other` = sum(Other, na.rm = T),
-    coal = round(`Global Coal` * 100/ `Global Total`, 2),
-    oil = round(`Global Oil` * 100 / `Global Total`, 2),
-    gas = round(`Global Gas` * 100 / `Global Total`, 2),
-    cement = round(`Global Cement` * 100 / `Global Total`, 2),
-    flaring = round(`Global Flaring` * 100 / `Global Total`, 2),
-    other = round(`Global Other` * 100 / `Global Total`, 2)
+    year,
+    global_total = sum(total, na.rm = T),
+    global_coal = sum(coal, na.rm = T),
+    global_oil = sum(oil, na.rm = T),
+    global_gas = sum(gas, na.rm = T),
+    global_cement = sum(cement, na.rm = T),
+    global_flaring = sum(flaring, na.rm = T),
+    global_other = sum(other, na.rm = T),
+    coal = round(`global_coal` * 100/ `global_total`, 2),
+    oil = round(`global_oil` * 100 / `global_total`, 2),
+    gas = round(`global_gas` * 100 / `global_total`, 2),
+    cement = round(`global_cement` * 100 / `global_total`, 2),
+    flaring = round(`global_flaring` * 100 / `global_total`, 2),
+    other = round(`global_other` * 100 / `global_total`, 2)
   ) %>% 
-  distinct(Year, .keep_all = T) %>%
+  distinct(year, .keep_all = T) %>%
   pivot_longer(
     cols = c('coal', 'oil', 'gas', 'cement', 'flaring', 'other'),
     names_to = 'Emissions Category',
     values_to = 'percent'
   ) 
 
-## Area plot of global emissions percent by category
-plot_2 <- ggplot(plot_df_2 %>% filter(Year >= 1850), 
-                 aes(x = Year, 
+## Area plot of global_emissions percent by category
+plot_2 <- ggplot(plot_df_2 %>% filter(year >= 1850), 
+                 aes(x = year, 
                      y = percent, 
                      fill = `Emissions Category`)) + 
   scale_x_continuous(expand = c(0.01, 0), n.breaks = 8) + 
@@ -106,36 +117,36 @@ plot_2 <- ggplot(plot_df_2 %>% filter(Year >= 1850),
   labs(
     title = 'Global Emissions Percentage by Category',
     subtitle = 'Prior to 1850 Nearly All Emissions Were From Coal',
-    x = 'Year',
+    x = 'year',
     y = 'Percent'
   )
 
-ggsave('global_percent_emissions_by_cat.svg', plot = plot_2,
-       path = 'C:/Users/WulfN/R Projects/Emissions-Data-Analysis')
+# ggsave('global_percent_emissions_by_cat.svg', plot = plot_2,
+#        path = 'C:/Users/WulfN/R Projects/Emissions-Data-Analysis')
 
-# Oil and Gas has contributed a greater percentage to Global emissions up through
+# oil and gas has contributed a greater percentage to global_emissions up through
 # The 1970s, but has plateaued or is decreasing since then. 
 
-## Area plot of absolute global emissions over time
+## Area plot of absolute global_emissions over time
 plot_df_3 <- plot_df_2 %>%
-  distinct(Year, .keep_all = T) %>%
+  distinct(year, .keep_all = T) %>%
   select(-c('Emissions Category', 'percent'),
-         Coal = `Global Coal`,
-         Oil = `Global Oil`,
-         Gas = `Global Gas`,
-         Cement = `Global Cement`,
-         Flaring = `Global Flaring`,
-         Other = `Global Other`
+         coal = `global_coal`,
+         oil = `global_oil`,
+         gas = `global_gas`,
+         cement = `global_cement`,
+         flaring = `global_flaring`,
+         other = `global_other`
   ) %>%
   pivot_longer(
-    cols = c('Coal', 'Oil', 'Gas', 'Cement',
-             'Flaring', 'Other'),
+    cols = c('coal', 'oil', 'gas', 'cement',
+             'flaring', 'other'),
     names_to = 'Global Emissions Category',
     values_to = 'Total Emissions'
   ) 
 
-plot_3 <- ggplot(plot_df_3 %>% filter(Year >= 1850), 
-                 aes(x = Year, 
+plot_3 <- ggplot(plot_df_3 %>% filter(year >= 1850), 
+                 aes(x = year, 
                      y = `Total Emissions`/ 1000, # For cleaner y-axis
                      fill = `Global Emissions Category`)) + 
   scale_x_continuous(expand = c(0.01, 0), n.breaks = 8) + 
@@ -147,120 +158,152 @@ plot_3 <- ggplot(plot_df_3 %>% filter(Year >= 1850),
         legend.position = c(.14, .736)) +
   labs(
     title = 'Global Total Emissions by Category',
-    subtitle = 'Omitting Years Prior to 1850',
+    subtitle = 'Omitting years Prior to 1850',
     x = 'Year',
     y = 'Total Emissions (Billion Tonnes)'
   )
 
-ggsave('global_total_emissions_by_cat.svg', plot = plot_3,
-       path = 'C:/Users/WulfN/R Projects/Emissions-Data-Analysis')
+# ggsave('global_total_emissions_by_cat.svg', plot = plot_3,
+#        path = 'C:/Users/WulfN/R Projects/Emissions-Data-Analysis')
 
-# Total Emissions has steadily risen, but has arguably plateaued after 2000.
-# Global Gas emissions has steadily increased, despite the total emissions trend. 
+# total Emissions has steadily risen, but has arguably plateaued after 2000.
+# global_gas emissions has steadily increased, despite the total emissions trend. 
 # Tonnes is equivalent to 1,000 Kilograms
 
 
+# Rising / Declining Emissions Visualization ------------------------------
 
-# Declining Emissions Visualizations --------------------------------------
+### Rising
+rise_plot_df <- modeling_df %>%
+  filter(declining_emissions_indicator == 'rising')
 
-# Definition: Have 3 consecutive years where emissions are less than the max
 
-reduc_emissions_countries <- mt_c02_adj %>%
-  group_by(Country) %>%
-  mutate(
-    max_total_emissions = max(Total, na.rm = T),
-    # indicator for year of max emissions
-    year_of_max_total_emissions = case_when(Total == max_total_emissions ~ 1, 
-                                            TRUE ~ 0)
-  ) %>%
-  filter(
-    year_of_max_total_emissions == 1,
-    # remove countries whose max emitting year is within past 3 years,
-    Year < max(Year, na.rm = T) - 3 
-  ) %>%
-  distinct(Country, .keep_all = T)
 
-reduc_emissions_countries$Year %>% summary()
-# Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-# 1949    1988    2007    2001    2014    2018 
-
-# What is the min usage after the max year emissions - what is the percent difference?
-
-# year and country 
-max_year_emissions <- reduc_emissions_countries %>% select(Country, max_year_for_filter = Year)
-
-min_after_max_emissions <- mt_c02_adj %>%
-  left_join(max_year_emissions, by = 'Country') %>%
-  group_by(Country) %>%
-  filter(Year >= max_year_for_filter) %>%
-  mutate(
-    min_emissions_by_country = min(Total, na.rm = T),
-    min_emission_year = case_when(Total == min_emissions_by_country ~ 1, 
-                                  TRUE ~ 0),
-    max_emission_year = min(Year, na.rm = T), 
-    years_from_max_to_min = max_emission_year - min_emission_year,
-    slope_emissions_v_year = coef(lm(Total ~ Year))[2]
-  ) %>%
-  # filter countries with a positive slope for emissions over time after their max year
-  # so countries that have reduced emissions over time remain 
-  filter(slope_emissions_v_year <= 0) %>%
-  ungroup() 
-
-nrow(min_after_max_emissions %>% distinct(Country))
-# 116 countries with reduced emissions (131 prior)
-
-reduc_emissions_countries_names <- min_after_max_emissions %>%
-  distinct(Country) %>%
-  pull()
-
-### Plot dataframe
-plot_reduc_emissions_countries <- plot_df %>%
-  filter(Country %in% reduc_emissions_countries_names)
-
-# Country emissions quantile for countries
-count(plot_reduc_emissions_countries %>% distinct(Country, .keep_all = T), country_emissions_quantile)
-#   country_emissions_quantile     n
-# 1                          1    43
-# 2                          2    24
-# 3                          3    25
-# 4                          4    24
-
-# Countries with declining emissions 
-ggplot(plot_reduc_emissions_countries %>% filter(Year >= 1900), 
-       aes(x = Year, y = Total, color = Country)) +
-  geom_line(show.legend = FALSE) + 
-  facet_wrap(~country_emissions_quantile,scales = 'free_y') + 
-  scale_y_continuous(labels = scales::comma, n.breaks = 7) +
+# Countries with Rising min-max normalized C02 Emissions Average 
+ggplot(data = rise_plot_df %>% distinct(year, .keep_all = T), 
+       aes(x = year, y = norm_avg_emissions_by_year, color = country)) +
+  geom_area(show.legend = F) +
+  scale_y_continuous(limits = c(0:1), n.breaks = 7) +
   scale_x_continuous(expand = c(0.01, 0)) + 
   scale_color_viridis_d(option = 'E') +
   theme_minimal() + 
   theme(axis.text.y = element_text(angle = 37)) +
   labs(
-    title = 'Countries with Declining Emissions',
-    subtitle = 'Year 1900 Onwards, by Quartile',
-    y = 'Total C02 Emissions'
+    title = 'Rising - Normalized Global Average C02 Emissions',
+    x = 'Year',
+    y = 'Normalized Average'
   )
 
-# Countries with rising emissions
-plot_rising_emissions <- plot_df %>% 
-  filter(!Country %in% reduc_emissions_countries_names) 
 
-ggplot(plot_rising_emissions %>% filter(Year >= 1900), 
-       aes(x = Year, y = Total, color = Country)) +
-  geom_line(show.legend = FALSE) + 
-  facet_wrap(~country_emissions_quantile,scales = 'free_y') + 
-  scale_y_continuous(labels = scales::comma, n.breaks = 7) +
+### Declining
+decline_plot_df <- modeling_df %>%
+  filter(declining_emissions_indicator == 'declining')
+
+# Countries with Declining min-max normalized C02 Emissions Average 
+ggplot(data = decline_plot_df %>% distinct(year, .keep_all = T), 
+       aes(x = year, y = norm_avg_emissions_by_year, color = country)) +
+  geom_area(show.legend = F) +
+  scale_y_continuous(limits = c(0:1),  n.breaks = 7) +
   scale_x_continuous(expand = c(0.01, 0)) + 
   scale_color_viridis_d(option = 'E') +
   theme_minimal() + 
   theme(axis.text.y = element_text(angle = 37)) +
   labs(
-    title = 'C02 Emissions by Country over Time',
-    subtitle = 'Year 1900 Onwards',
-    y = 'Total C02 Emissions'
+    title = 'Declining - Normalized Global Average C02 Emissions',
+    x = 'Year',
+    y = 'Normalized Average'
   )
+
+# years of economic recessions have lower emissions 
 
 # Choropleth --------------------------------------------------------------
 
-### to be added at a later date
+librarian::shelf(leaflet, geojsonio, htmlwidgets)
 
+# Load GeoJSON data for countries
+geojson_url <- "https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json"
+world_geojson <- geojson_read(geojson_url, what = "sp")
+
+# create dataframe for choropleth plots
+mapping_df <- modeling_df %>% 
+  # may engineer other features 
+  select(country, id = country_code, declining_emissions_indicator,
+         slope_estimate_rising, slope_estimate_declining) %>%
+  mutate(trend = # slope was calculated on normalized total emissions values
+           case_when(
+             is.na(slope_estimate_rising) == TRUE & is.na(slope_estimate_declining) == TRUE ~ NA,
+             is.na(slope_estimate_rising) == TRUE ~ slope_estimate_declining,
+             is.na(slope_estimate_declining) == TRUE ~ slope_estimate_rising)) %>%
+  select(-starts_with('slope')) %>%
+  distinct(country, .keep_all = T)
+######
+## *** Need to make trend value more interpretable - ranking? 0 to 1?
+######
+
+
+# Replace data with added variables
+ join_df <- world_geojson@data %>%
+   left_join(mapping_df, by = 'id')
+ world_geojson@data <- join_df
+
+ggplot(mapping_df, aes(x = trend)) + 
+  geom_density()
+ 
+# Create a color palette
+palette <- colorBin(palette = "plasma", domain = world_geojson@data$trend, bins = 12)
+
+## if a lot of choropleth maps are to be made, create function
+
+# Create the leaflet map
+trend_choropleth <- leaflet(world_geojson,
+                            options = leafletOptions(minZoom = 2.34)
+                            ) %>%
+  addTiles() %>%
+  addPolygons(
+    fillColor = ~palette(trend),
+    weight = 1,
+    opacity = 1,
+    color = "#655",
+    #dashArray = "3",
+    fillOpacity = 0.6,
+    highlight = highlightOptions(
+      weight = 3,
+      color = "white",
+      #dashArray = "",
+      fillOpacity = .9,
+      bringToFront = TRUE
+    ),
+    label = ~paste(name, ": ", trend), # ,//n trend: , trend)
+    labelOptions = labelOptions(
+      style = list("font-weight" = "normal", padding = "3px 8px"),
+      textsize = "15px",
+      direction = "auto"
+    )
+  ) %>%
+  addLegend(pal = palette, values = ~trend, opacity = 0.7,
+            title = "normalized slope", position = "bottomright") %>%
+  setView(lng = 0, lat = 0, zoom = 1)
+# think of how these values can be interpreted
+
+saveWidget(trend_choropleth, 
+           file = "./R Projects/Emissions-Data-Analysis/Plots/trend_choropleth.html")
+
+  # For animated time series
+# %>%
+#   addTimeSlider(
+#     timeSeriesData = time_series_data,
+#     timeField = "time_period",
+#     timeInterval = 1000, # Animation speed
+#     onChange = function(map, time) {
+#       leafletProxy(map) %>%
+#         clearShapes() %>%
+#         addPolygons(
+#           data = spatial_data %>% filter(time_period == time),
+#           fillColor = ~pal(value),
+#           color = "white",
+#           weight = 2,
+#           opacity = 1,
+#           fillOpacity = 0.7
+#         )
+#     }
+#   )

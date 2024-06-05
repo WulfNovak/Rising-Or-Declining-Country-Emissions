@@ -32,7 +32,7 @@ emissions_dt <- fread('./datasets/Emissions/GCB2023v43_MtCO2_flat.csv') %>%
   rename(country_code = `ISO 3166-1 alpha-3`) %>%
   clean_names()
 
-# country Names (Cleaned) and Codes
+# country names (Cleaned) and Codes
 wdi_country <- fread('./datasets/world_data/WDIcountry.csv') %>% 
   clean_names() %>%
   select(`country_code`, `short_name`)
@@ -145,7 +145,8 @@ summary(country_mu_sd %>% select(-country))
 
 ## Development Indicators by year
 wdi_csv <- fread('./datasets/world_data/WDICSV.csv', header = T) %>%
-  filter(`Country Code` %in% emissions_dt_2$country_code)
+  filter(`Country Code` %in% emissions_dt_2$country_code) %>%
+  clean_names()
 
 # Countries/islands omitted due to lack of development indicator data
 emissions_dt_2 %>% 
@@ -225,7 +226,7 @@ fwrite(all_ind_filt, file = './R Projects/Emissions-Data-Analysis/Data/Filtered_
 
 # Filtering longitudinal indicator data 
 wdi_filtered <- wdi_csv %>% 
-  filter(`Indicator Name` %in% all_ind_filt$indicator)
+  filter(indicator_name %in% all_ind_filt$indicator)
 
 missing_vals(wdi_filtered)
 # Coverage improves drastically from 2000 onward. 
@@ -235,89 +236,63 @@ missing_vals(wdi_filtered)
 rm(wdi_csv)
 gc()
 
-# ### Filter by amount of data available per variable 
-missing_indicators <- wdi_filtered %>%
-  mutate(na_count_row = rowSums(is.na(.)),
-         indicator_name = `Indicator Name`) %>%
-  group_by(indicator_name) %>%
-  # max possible NA: 2023 - 1960 = 63
-  reframe(
-    indicator_name,
-    count = n(), # sum characters
-    avg_na = mean(na_count_row, na.rm = T)
-  )
-
-# dist'n of missing values
-ggplot(missing_indicators, aes(x = avg_na)) +
-  geom_density()
-
-# eliminate indicators where there are 60 + missing values (50 + ?)
-many_missing <- missing_indicators %>%
-  distinct(indicator_name, .keep_all = T) %>%
-  filter(avg_na > 60) %>%
-  pull(indicator_name)
-# 
-# # [1] "Account ownership at a financial institution or with a mobile-money-service provider (% of population ages 15+)"  
-# # [2] "Annualized average growth rate in per_capita real survey mean consumption or income, bottom 40% of population (%)"
-# # [3] "Annualized average growth rate in per_capita real survey mean consumption or income, total population (%)"        
-# # [4] "Child employment in agriculture (% of economically active children ages 7-14)"                                    
-# # [5] "Child employment in manufacturing (% of economically active children ages 7-14)"                                  
-# # [6] "Child employment in services (% of economically active children ages 7-14)"                                       
-# # [7] "Informal payments to public officials (% of firms)"                                                               
-# # [8] "Investment in water and sanitation with private participation (current US$)"                                      
-# # [9] "Multidimensional poverty headcount ratio (UNDP) (% of population)"                                                
-# # [10] "Present value of external debt (% of exports of goods, services and primary income)"                              
-# # [11] "Public private partnerships investment in ICT (current US$)"                                                      
-# # [12] "Public private partnerships investment in transport (current US$)"                                                
-# # [13] "Public private partnerships investment in water and sanitation (current US$)" 
 
 wdi_filtered_2 <- wdi_filtered %>% 
-  filter(!`Indicator Name` %in% many_missing) %>%
   # omitting 2023 because emissions data is only to year 2022
-  select(-c(`Indicator Code`, `2023`)) %>%
-  rename(country_Name = `country Name`,
-         country_code = `country_code`,
-         Indicator_Name = `Indicator Name`) %>%
-  pivot_longer(cols = `1960`:`2022`, names_to = "year") %>%
+  select(-c(indicator_code, x2023)) %>%
+  pivot_longer(cols = x1960:x2022, names_to = "year") %>%
+  mutate(year = gsub("x", "", year) %>% as.integer()) %>%
   filter(year >= 2000) %>%
   # perc NAs by indicator
-  group_by(country_Name, Indicator_Name) %>%
+  group_by(country_name, indicator_name) %>%
   mutate(perc_na = round(sum(is.na(value) * 100) / n(), 2)) %>%
   ungroup() %>%
-  group_by(Indicator_Name) %>%
+  group_by(indicator_name) %>%
   mutate(global_perc_na = round(mean(perc_na, na.rm = T), 2)) %>%
-  ungroup()
+  ungroup() 
   
 # How complete should the development indicators be across countries?? 
 indicator_global_perc_na <- wdi_filtered_2 %>% 
-  distinct(Indicator_Name, global_perc_na) %>% 
+  distinct(indicator_name, global_perc_na) %>% 
   arrange(desc(global_perc_na))
 
+# 
 summary(indicator_global_perc_na$global_perc_na)
 # Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-# 0.02    9.51   24.98   33.01   55.27   87.30 
+# 0.02    8.89   24.15   31.03   52.96   87.30
 
-# Unsure practical data coverage cutoff.
+# dist'n of data coverage
 ggplot(indicator_global_perc_na, aes(x = global_perc_na)) +
-  geom_density() # bimodal dist'n 
+  geom_density() 
+
+# Will remove variables with < 80% data cover from 2000 onward
+
+# How complete should development indicators be by country?
+indicator_country_perc_na <- wdi_filtered_2 %>% 
+  distinct(country_name, indicator_name, perc_na) %>% 
+  arrange(desc(perc_na))
+
+summary(indicator_country_perc_na$perc_na)
+# Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+# 0.00    0.00    4.35   31.03   69.57  100.00 
+
+# dist'n of data coverage
+ggplot(indicator_country_perc_na, aes(x = perc_na)) +
+  geom_density() 
+# most countries have coverage
 
 missing_vals(wdi_filtered_2)
 
 rm(wdi_filtered)
 gc()
 
-### Num groups, num features, num df
-n_distinct(wdi_filtered_2$country_Name) 
-# 204 countries
-
-n_distinct(wdi_filtered_2$Indicator_Name) 
-# 183 indicators
-
 # Pivot indicator variables to (country, year, Indicator_1, Indicator_2, etc,) form
 wdi_filtered_3 <- suppressWarnings({wdi_filtered_2 %>%
+  # Removing variables missing 80% or more of data
+  filter(!global_perc_na >= 80) %>%
   select(-c('perc_na', 'global_perc_na')) %>%
-  group_by(Country_Name) %>%
-  pivot_wider(names_from = 'Indicator_Name', values_from = 'value') %>%
+  group_by(country_name) %>%
+  pivot_wider(names_from = 'indicator_name', values_from = 'value') %>%
   clean_names() %>%
   # Variables with the following key words have large absolute value numbers that 
   # vary greatly from other variables which typically give a percent, index, percentile.
@@ -363,12 +338,10 @@ wdi_filtered_3 <- suppressWarnings({wdi_filtered_2 %>%
       "imports_of_goods_services_and_primary_income_bo_p_current_us",
       "net_bilateral_aid_flows_from_dac_donors_european_union_institutions_current_us",
       "net_primary_income_bo_p_current_us",                        
-      "net_primary_income_net_income_from_abroad_constant_lcu",
       "net_primary_income_net_income_from_abroad_current_us",                           
       "ppp_conversion_factor_gdp_lcu_per_international",                                
       "primary_income_payments_bo_p_current_us",                                        
       "primary_income_receipts_bo_p_current_us",                   
-      "public_private_partnerships_investment_in_energy_current_us",               
       "renewable_internal_freshwater_resources_per_capita_cubic_meters",            
       "renewable_internal_freshwater_resources_total_billion_cubic_meters",             
       "total_fisheries_production_metric_tons"
@@ -467,6 +440,12 @@ max_year_emissions <- reduc_emissions_countries %>% select(country, year_of_max_
 # get slope based on year (as year increases, total emissions decrease)
 # indicate countries whose emissions do NOT decrease
 
+# min-max normalize data so that slopes and values can later be compared 
+# between countries more easily
+min_max_normalize <- function(x) {
+  return ((x - min(x, na.rm = T)) / (max(x, na.rm = T) - min(x, na.rm = T)))
+}
+
 # Prepare data from year of max total emissions onward
 emissions_slope_data <- emissions_dt_2 %>%
   left_join(max_year_emissions, by = 'country') %>%
@@ -475,7 +454,7 @@ emissions_slope_data <- emissions_dt_2 %>%
   filter(# remove countries omitted by year requirement from consideration
          country %in% c(max_year_emissions %>% pull(country)),
          year >= year_of_max_total_emissions) %>%
-  mutate(norm_tot = scale(total)[,1]) # normalize total by year 
+  mutate(norm_tot = min_max_normalize(total)) # min-max normalized of total by year 
 
 # Create models and summaries for each country
 model_summaries <- emissions_slope_data %>%
@@ -557,7 +536,11 @@ model_stats %>% filter(slope_estimate < 0, sig_alpha_.05 == 1) %>% pull(country)
 # [64] "United Kingdom"            "United States"             "Uzbekistan"               
 # [67] "Venezuela"                 "Yemen"                     "Zimbabwe"
 
-final_declining_emissions <- model_stats %>% filter(slope_estimate < 0, sig_alpha_.05 == 1) %>% pull(country)
+final_declining_emissions <- model_stats %>% 
+  filter(slope_estimate < 0, sig_alpha_.05 == 1) %>%
+  select(country, 
+         slope_estimate_declining = slope_estimate, 
+         sig_alpha_.05_declining = sig_alpha_.05)
 
 # 69 countries total with declining emissions
 
@@ -566,7 +549,7 @@ final_declining_emissions <- model_stats %>% filter(slope_estimate < 0, sig_alph
 # Of countries without declining total emissions, which have rising total emissions?
 rising_emissions_candidates <- emissions_dt_2 %>%
   select(country, year, total) %>%
-  filter(!country %in% final_declining_emissions) %>%
+  filter(!country %in% final_declining_emissions$country) %>%
   group_by(country) %>%
   mutate(
     max_total_emissions = max(total, na.rm = T),
@@ -600,7 +583,7 @@ rising_emissions_slope_data <- emissions_dt_2 %>%
       # 2. "Leeward Islands"
       # 3. "Pacific Islands (Palau)"
     ) %>%
-  mutate(norm_tot = scale(total)[,1]) %>%
+  mutate(norm_tot = min_max_normalize(total)) %>%
   ungroup()
 
 # Create models and summaries for each country
@@ -740,8 +723,9 @@ model_stats_2 %>%
 
 final_rising_emissions <- model_stats_2 %>% 
   filter(sig_alpha_.05 == 1, positive_slope_indicator ==1) %>%
-  pull(country)
-
+  select(country, 
+         slope_estimate_rising = slope_estimate, 
+         sig_alpha_.05_rising = sig_alpha_.05)
 
 # Modeling Dataframe ------------------------------------------------------
 
@@ -751,12 +735,14 @@ modeling_df <- emissions_dt_2 %>%
   select(-c('cement', 'flaring', 'other')) %>%
   filter(year >= 2000) %>%
   mutate(declining_emissions_indicator = 
-           case_when(country %in% final_declining_emissions ~ 1,
-                     country %in% final_rising_emissions ~ 0,
-                     TRUE ~ NA)) %>%
+           case_when(country %in% final_declining_emissions$country ~ 'declining',
+                     country %in% final_rising_emissions$country ~ 'rising',
+                     TRUE ~ 'insignificant_trend')) %>%
   group_by(country) %>%
-  # normalized total per country
-  mutate(norm_tot = scale(total)[,1]) %>%
+  # min-max normalization of total by country
+  left_join(final_rising_emissions, by = 'country') %>%
+  left_join(final_declining_emissions, by = 'country') %>%
+  mutate(norm_tot = min_max_normalize(total)) %>%
   ungroup() %>%
   left_join(wdi_filtered_3, by = c('country_code', 'year')) %>%
   filter(
@@ -785,19 +771,22 @@ modeling_df <- emissions_dt_2 %>%
 
 count(modeling_df %>% distinct(country, .keep_all = T), declining_emissions_indicator)
 #   declining_emissions_indicator     n
-# 1                             0   120 
-# 2                             1    66 ***
-# 3                            NA    18 
+# 1 declining                        66 ***
+# 2 insignificant_trend              18
+# 3 rising                          120 
 
 # *** There are only 66 countries of the 69 found with declining emissions. 
 # The removed countries are 'Christmas Island', 'Cook Islands', and 'Montserrat'
 # All were removed due to lack of development indicator data from 2000 onward
 
+# Save modeling_df
+fwrite(modeling_df, file = './datasets/Emissions/modeling_df.rds')
 
 
-# Save dataframe
-# fwrite(modeling_df, file = 'C:\Users\WulfN\R Projects\Emissions-Data-Analysis\Data')
+### avg Correlations of variables to emissions across countries?
+### Score of average correlation by sum of data available for that variable
 
+# Variables that are very different between groups
 
 
 
