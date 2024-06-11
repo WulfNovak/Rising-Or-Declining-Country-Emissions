@@ -177,8 +177,6 @@ plot_3 <- ggplot(plot_df_3 %>% filter(year >= 1850),
 rise_plot_df <- modeling_df %>%
   filter(declining_emissions_indicator == 'rising')
 
-
-
 # Countries with Rising min-max normalized C02 Emissions Average 
 ggplot(data = rise_plot_df %>% distinct(year, .keep_all = T), 
        aes(x = year, y = norm_avg_emissions_by_year, color = country)) +
@@ -189,11 +187,28 @@ ggplot(data = rise_plot_df %>% distinct(year, .keep_all = T),
   theme_minimal() + 
   theme(axis.text.y = element_text(angle = 37)) +
   labs(
-    title = 'Rising - Normalized Global Average C02 Emissions',
+    title = 'Rising: Normalized Global Average C02 Emissions',
     x = 'Year',
     y = 'Normalized Average'
   )
 
+# All Countries
+ggplot(data = rise_plot_df, 
+       aes(x = year, y = norm_tot, color = country)) +
+  geom_line(show.legend = F) +
+  scale_y_continuous(limits = c(0:1), n.breaks = 7) +
+  scale_x_continuous(expand = c(0.01, 0)) + 
+  scale_color_viridis_d(option = 'E') +
+  theme_minimal() + 
+  theme(axis.text.y = element_text(angle = 37)) +
+  labs(
+    title = 'Rising: Normalized Global Average C02 Emissions',
+    subtitle = 'All Countries',
+    x = 'Year',
+    y = 'Normalized Average'
+  )
+
+# Shiny App - alphabetical drop-down of country, then emissions trend. 
 
 ### Declining
 decline_plot_df <- modeling_df %>%
@@ -209,12 +224,26 @@ ggplot(data = decline_plot_df %>% distinct(year, .keep_all = T),
   theme_minimal() + 
   theme(axis.text.y = element_text(angle = 37)) +
   labs(
-    title = 'Declining - Normalized Global Average C02 Emissions',
+    title = 'Declining: Normalized Global Average C02 Emissions',
+    x = 'Year',
+    y = 'Normalized Average'
+  ) # years with economic recessions have lower emissions 
+
+# All Countries
+test <- ggplot(data = decline_plot_df, 
+       aes(x = year, y = total, color = country)) +
+  geom_line(show.legend = F) +
+  #scale_y_continuous(limits = c(0:1),  n.breaks = 7) +
+  scale_x_continuous(expand = c(0.01, 0)) + 
+  scale_color_viridis_d(option = 'E') +
+  theme_minimal() + 
+  theme(axis.text.y = element_text(angle = 37)) +
+  labs(
+    title = 'Declining: Normalized Global Average C02 Emissions',
     x = 'Year',
     y = 'Normalized Average'
   )
 
-# years of economic recessions have lower emissions 
 
 # Choropleth --------------------------------------------------------------
 
@@ -231,11 +260,16 @@ mapping_df <- modeling_df %>%
          slope_estimate_rising, slope_estimate_declining) %>%
   mutate(trend = # slope was calculated on normalized total emissions values
            case_when(
-             is.na(slope_estimate_rising) == TRUE & is.na(slope_estimate_declining) == TRUE ~ NA,
+             is.na(slope_estimate_rising) == TRUE & is.na(slope_estimate_declining) == TRUE ~ 0,
              is.na(slope_estimate_rising) == TRUE ~ slope_estimate_declining,
-             is.na(slope_estimate_declining) == TRUE ~ slope_estimate_rising)) %>%
+             is.na(slope_estimate_declining) == TRUE ~ slope_estimate_rising),
+         binary_trend = case_when(trend < 0 ~ -1, #'declining',
+                                  trend > 0 ~ 1, #'rising',
+                                  TRUE ~ 0) #'insignificant trend'
+         ) %>% #'insignificant'
   select(-starts_with('slope')) %>%
   distinct(country, .keep_all = T)
+
 ######
 ## *** Need to make trend value more interpretable - ranking? 0 to 1?
 ######
@@ -285,10 +319,52 @@ trend_choropleth <- leaflet(world_geojson,
   setView(lng = 0, lat = 0, zoom = 1)
 # think of how these values can be interpreted
 
-saveWidget(trend_choropleth, 
+saveWidget(trend_choropleth,
            file = "./R Projects/Emissions-Data-Analysis/Plots/trend_choropleth.html")
 
-  # For animated time series
+# Binary Trend Map
+palette <- colorBin(palette = "plasma", domain = world_geojson@data$binary_trend, bins = 3)
+binary_trend_map <- leaflet(world_geojson,
+                            options = leafletOptions(minZoom = 2.34)) %>%
+  addTiles() %>%
+  addPolygons(
+    fillColor = ~palette(binary_trend),
+    weight = 1,
+    opacity = 1,
+    color = "#655",
+    #dashArray = "3",
+    fillOpacity = 0.6,
+    highlight = highlightOptions(
+      weight = 3,
+      color = "white",
+      #dashArray = "",
+      fillOpacity = .9,
+      bringToFront = TRUE
+    ),
+    label = ~paste(name, ": ", binary_trend), # ,//n trend: , trend)
+    labelOptions = labelOptions(
+      style = list("font-weight" = "normal", padding = "3px 8px"),
+      textsize = "15px",
+      direction = "auto"
+    )
+  ) %>%
+  addLegend(pal = palette, values = ~binary_trend, opacity = 0.7,
+            title = "-1 = Declining, 1 = Rising", position = "bottomright") %>%
+  setView(lng = 0, lat = 0, zoom = 1)
+# think of how these values can be interpreted
+
+saveWidget(binary_trend_map, 
+           file = "./R Projects/Emissions-Data-Analysis/Plots/binary_trend_map.html")
+
+### For animated time series
+# Things to Consider:
+# 1. What vars are best seen over time
+#   a. highly correlated vars
+#     - visual for country whose emissions rise or fall?
+#   b. total emissions over time
+
+
+
 # %>%
 #   addTimeSlider(
 #     timeSeriesData = time_series_data,
