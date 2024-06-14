@@ -294,12 +294,59 @@ wdi_filtered_3 <- suppressWarnings({wdi_filtered_2 %>%
   group_by(country_name) %>%
   pivot_wider(names_from = 'indicator_name', values_from = 'value') %>%
   clean_names() %>%
+    # reducing scope of study (~24 vars pref)
+  select(
+    country_name, 
+    country_code,
+    year,
+    adjusted_net_national_income_per_capita_annual_percent_growth,
+    broad_money_growth_annual_percent,
+    central_government_debt_total_percent_of_gdp,
+    control_of_corruption_estimate,
+    control_of_corruption_percentile_rank,
+    exports_of_goods_and_services_percent_of_gdp,
+    final_consumption_expenditure_percent_of_gdp,
+    food_production_index_2014_2016_100,
+    foreign_direct_investment_net_inflows_percent_of_gdp,
+    foreign_direct_investment_net_outflows_percent_of_gdp,
+    gdp_constant_2015_us,
+    gini_index,
+    gni_growth_annual_percent,
+    government_expenditure_per_student_primary_percent_of_gdp_per_capita,
+    government_expenditure_per_student_secondary_percent_of_gdp_per_capita,
+    government_expenditure_per_student_tertiary_percent_of_gdp_per_capita,
+    gross_domestic_savings_percent_of_gdp,
+    gross_national_expenditure_percent_of_gdp,
+    inflation_consumer_prices_annual_percent,
+    imports_of_goods_and_services_percent_of_gdp,
+    livestock_production_index_2014_2016_100,
+    military_expenditure_percent_of_gdp,
+    people_using_at_least_basic_drinking_water_services_percent_of_population,
+    people_using_at_least_basic_sanitation_services_percent_of_population,
+    political_stability_and_absence_of_violence_terrorism_estimate,
+    proportion_of_people_living_below_50_percent_of_median_income_percent,
+    rural_population_growth_annual_percent,
+    urban_population_growth_annual_percent,
+    rule_of_law_estimate,
+    taxes_on_income_profits_and_capital_gains_percent_of_revenue,
+    trade_percent_of_gdp,
+    women_business_and_the_law_index_score_scale_1_100
+    
+  ) %>%
+    # removing the following indicators from scope of project
+  # select(-c(
+  #   "control_of_corruption_number_of_sources",
+  #   "electricity_production_from_renewable_sources_excluding_hydroelectric_k_wh",
+  #   "political_stability_and_absence_of_violence_terrorism_number_of_sources",
+  #   "rule_of_law_number_of_sources",
+  #   "renewable_internal_freshwater_resources_total_billion_cubic_meters"
+  # )) %>%
   # Variables with the following key words have large absolute value numbers that 
   # vary greatly from other variables which typically give a percent, index, percentile.
   # Normalizing for each country
   mutate(
     across( 
-      .cols = names(.)[grep("income_constant|income_current|capita_constant|capita_current|metric_tons|constant_LCU|international|kWh|current_US|cubic_meters", 
+      .cols = names(.)[grep("income_constant|income_current|_constant_|capita_current|metric_tons|constant_LCU|international|kWh|current_US|cubic_meters", 
                             names(.), ignore.case = TRUE)],
       .fns = ~case_when(
         # min(NA) and max(NA) give 'inf', changing to zero
@@ -315,60 +362,49 @@ wdi_filtered_3 <- suppressWarnings({wdi_filtered_2 %>%
       .names = "norm_{col}" 
     )
   ) %>%
-    # Removing variables where the normalized version now exists
-    select( # There had to be a better way!
-      -c(
-      "adjusted_net_national_income_constant_2015_us",
-      "adjusted_net_national_income_current_us",                                 
-      "adjusted_net_national_income_per_capita_constant_2015_us",                       
-      "adjusted_net_national_income_per_capita_current_us",                             
-      "aquaculture_production_metric_tons",                                      
-      "capture_fisheries_production_metric_tons",                                       
-      "cereal_production_metric_tons",
-      "debt_service_on_external_debt_public_and_publicly_guaranteed_ppg_tds_current_us",
-      "discrepancy_in_expenditure_estimate_of_gdp_constant_lcu",                  
-      "exports_of_goods_services_and_primary_income_bo_p_current_us",        
-      "external_debt_stocks_public_and_publicly_guaranteed_ppg_dod_current_us",
-      "gdp_constant_lcu",                                               
-      "gdp_per_capita_constant_2015_us",                                                
-      "gdp_per_capita_constant_lcu",                                
-      "gdp_per_capita_ppp_constant_2017_international",
-      "gdp_ppp_constant_2017_international",                                            
-      "gross_domestic_income_constant_lcu",                  
-      "imports_of_goods_services_and_primary_income_bo_p_current_us",
-      "net_bilateral_aid_flows_from_dac_donors_european_union_institutions_current_us",
-      "net_primary_income_bo_p_current_us",                        
-      "net_primary_income_net_income_from_abroad_current_us",                           
-      "ppp_conversion_factor_gdp_lcu_per_international",                                
-      "primary_income_payments_bo_p_current_us",                                        
-      "primary_income_receipts_bo_p_current_us",                   
-      "renewable_internal_freshwater_resources_per_capita_cubic_meters",            
-      "renewable_internal_freshwater_resources_total_billion_cubic_meters",             
-      "total_fisheries_production_metric_tons"
-      )
-    ) %>%
-    mutate(across(.cols = -c('country_code', 'year'),
-                  .fns = ~ lag(.x, n = 1), 
-                  .names = "lag_{col}")) %>%
-  ungroup() %>%
-  mutate(year = as.integer(year)) 
+    # # Removing variables where the normalized version now exists
+    # select(
+    #   -c(
+    #   "adjusted_net_national_income_current_us",                                 
+    #   "adjusted_net_national_income_per_capita_constant_2015_us",                       
+    #   "adjusted_net_national_income_per_capita_current_us",                             
+    #   "aquaculture_production_metric_tons",                                      
+    #   "capture_fisheries_production_metric_tons",                                       
+    #   "cereal_production_metric_tons",
+    #   "debt_service_on_external_debt_public_and_publicly_guaranteed_ppg_tds_current_us",
+    #   "discrepancy_in_expenditure_estimate_of_gdp_constant_lcu",
+    #   "exports_of_goods_services_and_primary_income_bo_p_current_us",        
+    #   "external_debt_stocks_public_and_publicly_guaranteed_ppg_dod_current_us",
+    #   "gdp_constant_lcu",                                               
+    #   "gdp_per_capita_constant_2015_us",                                                
+    #   "gdp_per_capita_constant_lcu",                                
+    #   "gdp_per_capita_ppp_constant_2017_international",
+    #   "gdp_ppp_constant_2017_international",                                            
+    #   "gross_domestic_income_constant_lcu",                  
+    #   "imports_of_goods_services_and_primary_income_bo_p_current_us",
+    #   "net_bilateral_aid_flows_from_dac_donors_european_union_institutions_current_us",
+    #   "net_primary_income_bo_p_current_us",                        
+    #   "net_primary_income_net_income_from_abroad_current_us",
+    #   "ppp_conversion_factor_gdp_lcu_per_international",                                
+    #   "primary_income_payments_bo_p_current_us",                                        
+    #   "primary_income_receipts_bo_p_current_us",                   
+    #   "refugee_population_by_country_or_territory_of_origin",
+    #   "renewable_internal_freshwater_resources_per_capita_cubic_meters",            
+    #   "total_fisheries_production_metric_tons"
+    #   )
+    # ) %>%
+    # Consider doing this after imputation
+      # Factor variables need to be removed 
+    # mutate(across(.cols = -c('country_code', 'year'),
+    #               .fns = ~ lag(.x, n = 1), 
+    #               .names = "lag_{col}")) %>%
+  ungroup() 
+  #%>%
+  #mutate(year = as.integer(year)) 
 })
 
 missing_vals(wdi_filtered_3)
 # Perhaps remove variables with 70% or more NA?
-
-# Method for selecting highly correlated variables:
-# ** Do for both Rising / Declining countries
-# For all development indicators, find country with greatest coverage
-# Reduce variable to available NAs (hopefully there is a lot of coverage)
-# eliminate variables that have low absolute value correlation for BOTH 
-# rising / declining countries
-
-# row NA sums? remove Indicator code
-# sig diff between countries that have rising vs declining emissions 
-# (each country is an observation)
-# Perhaps look at peak year of development indicators?
-# Drastically better coverage of development indicators from 2000 onwards
 
 
 # Select Countries with Declining total Emissions -------------------------
@@ -378,9 +414,11 @@ missing_vals(wdi_filtered_3)
 #    (so that there is enough data to recognize a trend)
 # 2. Slope of normalized total emissions by country to year is negative and 
 #    statistically significant, for data of max year of emissions onward
+# 3. Year >= 2000
 
 reduc_emissions_countries <- emissions_dt_2 %>%
   select(country, year, total) %>%
+  filter(year >= 2000) %>% 
   group_by(country) %>%
   mutate(
     max_total_emissions = max(total, na.rm = T),
@@ -391,7 +429,7 @@ reduc_emissions_countries <- emissions_dt_2 %>%
   filter(
     year_of_max_total_emissions_indicator == 1,
     # remove countries whose max emitting year is within past 5 years,
-    year < max(year, na.rm = T) - 5 # *** Omits 106 countries
+    year < max(year, na.rm = T) - 5
   ) %>%
   mutate(# if multiple periods of emission decline, choose most recent
          year_of_max_total_emissions = max(year, na.rm = T)
@@ -399,46 +437,51 @@ reduc_emissions_countries <- emissions_dt_2 %>%
   ungroup() %>%
   distinct(country, year_of_max_total_emissions, .keep_all = T)
 
-# 87 Countries omitted due to year requirement:
+# 123 Countries omitted due to year requirement:
 emissions_dt_2 %>% filter(!country %in% c(reduc_emissions_countries %>% pull(country))) %>% 
   distinct(country) %>% pull()
 
-# [1] "Afghanistan"              "Algeria"                  "Anguilla"                
-# [4] "Argentina"                "Australia"                "Bahrain"                 
-# [7] "Bangladesh"               "Belize"                   "Benin"                   
-# [10] "Bhutan"                   "Botswana"                 "Burkina Faso"            
-# [13] "Burundi"                  "Cambodia"                 "Chad"                    
-# [16] "Chile"                    "China"                    "Colombia"                
-# [19] "Comoros"                  "Congo"                    "Costa Rica"              
-# [22] "Côte d'Ivoire"            "Dominican Republic"       "Egypt"                   
-# [25] "El Salvador"              "Ethiopia"                 "Fiji"                    
-# [28] "Panama Canal Zone"        "The Gambia"               "Ghana"                   
-# [31] "Grenada"                  "Guatemala"                "Guinea"                  
-# [34] "Guinea-Bissau"            "Guyana"                   "Haiti"                   
-# [37] "Honduras"                 "India"                    "Indonesia"               
-# [40] "Iraq"                     "Iran"                     "Kazakhstan"              
-# [43] "Kenya"                    "Kiribati"                 "Kuwait"                  
-# [46] "Kuwaiti Oil Fires"        "Lao PDR"                  "Lebanon"                 
-# [49] "Lesotho"                  "Libya"                    "Macao SAR, China"        
-# [52] "Madagascar"               "Malawi"                   "Malaysia"                
-# [55] "Maldives"                 "Mali"                     "Marshall Islands"        
-# [58] "Mauritania"               "Mauritius"                "Mexico"                  
-# [61] "Mongolia"                 "Morocco"                  "Myanmar"                 
-# [64] "Namibia"                  "Nepal"                    "New Caledonia"           
-# [67] "Nicaragua"                "Niger"                    "Nigeria"                 
-# [70] "West Bank and Gaza"       "Oman"                     "Pakistan"                
-# [73] "Panama"                   "Papua New Guinea"         "Paraguay"                
-# [76] "Peru"                     "Philippines"              "Bolivia"                 
-# [79] "Qatar"                    "Cameroon"                 "Korea"                   
-# [82] "Sudan"                    "Rwanda"                   "Saint Helena"            
-# [85] "St. Lucia"                "Samoa"                    "Saudi Arabia"            
-# [88] "Senegal"                  "Seychelles"               "St. Kitts and Nevis"     
-# [91] "Suriname"                 "Taiwan"                   "Thailand"                
-# [94] "Timor-Leste"              "Tonga"                    "Tunisia"                 
-# [97] "Türkiye"                  "Turkmenistan"             "Turks and Caicos Islands"
-# [100] "Tuvalu"                   "Uganda"                   "United Arab Emirates"    
-# [103] "Tanzania"                 "Vanuatu"                  "Viet Nam"                
-# [106] "Zambia"   
+# [1] "Afghanistan"                       "Algeria"                           "Anguilla"                         
+# [4] "Antarctica"                        "Antigua and Barbuda"               "Argentina"                        
+# [7] "Armenia"                           "Australia"                         "Azerbaijan"                       
+# [10] "The Bahamas"                       "Bahrain"                           "Bangladesh"                       
+# [13] "Belize"                            "Benin"                             "Bhutan"                           
+# [16] "Bonaire, Saint Eustatius and Saba" "Botswana"                          "Brunei"                           
+# [19] "Burkina Faso"                      "Burundi"                           "Cambodia"                         
+# [22] "Central African Republic"          "Chad"                              "Chile"                            
+# [25] "China"                             "Christmas Island"                  "Colombia"                         
+# [28] "Comoros"                           "Congo"                             "Costa Rica"                       
+# [31] "Côte d'Ivoire"                     "Dominican Republic"                "Egypt"                            
+# [34] "El Salvador"                       "Ethiopia"                          "Fiji"                             
+# [37] "Panama Canal Zone"                 "The Gambia"                        "Georgia"                          
+# [40] "Ghana"                             "Grenada"                           "Guatemala"                        
+# [43] "Guinea"                            "Guinea-Bissau"                     "Guyana"                           
+# [46] "Haiti"                             "Honduras"                          "India"                            
+# [49] "Indonesia"                         "Iraq"                              "Iran"                             
+# [52] "Kazakhstan"                        "Kenya"                             "Kiribati"                         
+# [55] "Kuwait"                            "Kuwaiti Oil Fires"                 "Kyrgyz Republic"                  
+# [58] "Lao PDR"                           "Lebanon"                           "Lesotho"                          
+# [61] "Liberia"                           "Libya"                             "Macao SAR, China"                 
+# [64] "Madagascar"                        "Malawi"                            "Malaysia"                         
+# [67] "Maldives"                          "Mali"                              "Marshall Islands"                 
+# [70] "Mauritania"                        "Mauritius"                         "Mexico"                           
+# [73] "Mongolia"                          "Morocco"                           "Myanmar"                          
+# [76] "Namibia"                           "Nepal"                             "New Caledonia"                    
+# [79] "Nicaragua"                         "Niger"                             "Nigeria"                          
+# [82] "West Bank and Gaza"                "Oman"                              "Pakistan"                         
+# [85] "Panama"                            "Papua New Guinea"                  "Paraguay"                         
+# [88] "Peru"                              "Philippines"                       "Bolivia"                          
+# [91] "Poland"                            "Qatar"                             "Cameroon"                         
+# [94] "Korea"                             "Moldova"                           "Sudan"                            
+# [97] "Russia"                            "Rwanda"                            "Saint Helena"                     
+# [100] "St. Lucia"                         "Samoa"                             "Saudi Arabia"                     
+# [103] "Senegal"                           "Seychelles"                        "Somalia"                          
+# [106] "St. Kitts and Nevis"               "Suriname"                          "Taiwan"                           
+# [109] "Tajikistan"                        "Thailand"                          "Timor-Leste"                      
+# [112] "Tonga"                             "Tunisia"                           "Türkiye"                          
+# [115] "Turkmenistan"                      "Turks and Caicos Islands"          "Tuvalu"                           
+# [118] "Uganda"                            "United Arab Emirates"              "Tanzania"                         
+# [121] "Vanuatu"                           "Viet Nam"                          "Zambia"
 
 max_year_emissions <- reduc_emissions_countries %>% select(country, year_of_max_total_emissions)
 
@@ -456,7 +499,7 @@ min_max_normalize <- function(x) {
 # Prepare data from year of max total emissions onward
 emissions_slope_data <- emissions_dt_2 %>%
   left_join(max_year_emissions, by = 'country') %>%
-  select(country, year, year_of_max_total_emissions, total) %>%
+  select(country, year, year_of_max_total_emissions, total, per_capita) %>%
   group_by(country) %>%
   filter(# remove countries omitted by year requirement from consideration
          country %in% c(max_year_emissions %>% pull(country)),
@@ -489,53 +532,42 @@ model_stats <- model_summaries %>%
 # Count of countries with a statistically significant slope estimate: 72
 count(model_stats, sig_alpha_.05)
 #   sig_alpha_.05     n
-# 1             0    45
-# 2             1    67
+# 1             0    35
+# 2             1    60
 
 # Countries omitted due to insignificant slope OR positive slope
 model_stats %>% filter(slope_estimate > 0 | sig_alpha_.05 == 0) %>% pull(country)
 
-# [1] "Albania"                           "Antarctica"                        "Antigua and Barbuda"              
-# [4] "Armenia"                           "Azerbaijan"                        "Bermuda"                          
-# [7] "Bonaire, Saint Eustatius and Saba" "Bosnia and Herzegovina"            "Brunei"                           
-# [10] "Cabo Verde"                        "Canada"                            "Central African Republic"         
-# [13] "Cuba"                              "Dem. Rep. Congo"                   "Djibouti"                         
-# [16] "Dominica"                          "Ecuador"                           "Eritrea"                          
-# [19] "Eswatini"                          "Faroe Islands"                     "French Polynesia"                 
-# [22] "Gabon"                             "Georgia"                           "Greenland"                        
-# [25] "Iceland"                           "Kosovo"                            "Liberia"                          
-# [28] "Micronesia"                        "Montenegro"                        "Mozambique"                       
-# [31] "Netherlands"                       "New Zealand"                       "Niue"                             
-# [34] "Palau"                             "Russia"                            "Saint Pierre and Miquelon"        
-# [37] "Sierra Leone"                      "Singapore"                         "Solomon Islands"                  
-# [40] "Somalia"                           "South Sudan"                       "St. Vincent and the Grenadines"   
-# [43] "Switzerland"                       "São Tomé and Principe"             "Tajikistan"                       
-# [46] "Togo"                              "Uruguay"                           "Wallis and Futuna Islands"  
+# [1] "Albania"                        "Belarus"                        "Bermuda"                       
+# [4] "Bosnia and Herzegovina"         "Cabo Verde"                     "Canada"                        
+# [7] "Dem. People's Rep. Korea"       "Dem. Rep. Congo"                "Djibouti"                      
+# [10] "Dominica"                       "Ecuador"                        "Eritrea"                       
+# [13] "Eswatini"                       "Faroe Islands"                  "French Polynesia"              
+# [16] "Gabon"                          "Greenland"                      "Iceland"                       
+# [19] "Kosovo"                         "Micronesia"                     "Montenegro"                    
+# [22] "Mozambique"                     "New Zealand"                    "Niue"                          
+# [25] "Palau"                          "Saint Pierre and Miquelon"      "Sierra Leone"                  
+# [28] "Singapore"                      "Solomon Islands"                "South Sudan"                   
+# [31] "St. Vincent and the Grenadines" "São Tomé and Principe"          "Togo"                          
+# [34] "Uruguay"                        "Wallis and Futuna Islands"
 
 # Countries with significant AND negative slope - Keepers!
 model_stats %>% filter(slope_estimate < 0, sig_alpha_.05 == 1) %>% pull(country)
-# [1] "Andorra"                   "Angola"                    "Aruba"                    
-# [4] "Austria"                   "Barbados"                  "Belarus"                  
-# [7] "Belgium"                   "Brazil"                    "British Virgin Islands"   
-# [10] "Bulgaria"                  "Christmas Island"          "Cook Islands"             
-# [13] "Croatia"                   "Curaçao"                   "Cyprus"                   
-# [16] "Czechia"                   "Dem. People's Rep. Korea"  "Denmark"                  
-# [19] "Equatorial Guinea"         "Estonia"                   "Finland"                  
-# [22] "France"                    "Germany"                   "Greece"                   
-# [25] "Hong Kong SAR, China"      "Hungary"                   "Ireland"                  
-# [28] "Israel"                    "Italy"                     "Jamaica"                  
-# [31] "Japan"                     "Jordan"                    "Kyrgyz Republic"          
-# [34] "Latvia"                    "Liechtenstein"             "Lithuania"                
-# [37] "Luxembourg"                "Malta"                     "Moldova"                  
-# [40] "Montserrat"                "Nauru"                     "North Macedonia"          
-# [43] "Norway"                    "Poland"                    "Portugal"                 
-# [46] "Romania"                   "Serbia"                    "Sint Maarten (Dutch part)"
-# [49] "Slovak Republic"           "Slovenia"                  "South Africa"             
-# [52] "Spain"                     "Sri Lanka"                 "Sweden"                   
-# [55] "Syrian Arab Republic"      "The Bahamas"               "Trinidad and Tobago"      
-# [58] "Ukraine"                   "United Kingdom"            "United States"            
-# [61] "Uzbekistan"                "Venezuela"                 "Yemen"                    
-# [64] "Zimbabwe"  
+# [1] "Andorra"                   "Angola"            "Aruba"                     "Austria"                  
+# [5] "Barbados"                  "Belgium"           "Brazil"                    "British Virgin Islands"   
+# [9] "Bulgaria"                  "Cook Islands"      "Croatia"                   "Cuba"                     
+# [13] "Curaçao"                   "Cyprus"           "Czechia"                   "Denmark"                  
+# [17] "Equatorial Guinea"         "Estonia"          "Finland"                   "France"                   
+# [21] "Germany"                   "Greece"           "Hong Kong SAR, China"      "Hungary"                  
+# [25] "Ireland"                   "Israel"           "Italy"                     "Jamaica"                  
+# [29] "Japan"                     "Jordan"           "Latvia"                    "Liechtenstein"            
+# [33] "Lithuania"                 "Luxembourg"       "Malta"                     "Montserrat"               
+# [37] "Nauru"                     "Netherlands"      "North Macedonia"           "Norway"                   
+# [41] "Portugal"                  "Romania"          "Serbia"                    "Sint Maarten (Dutch part)"
+# [45] "Slovak Republic"           "Slovenia"         "South Africa"              "Spain"                    
+# [49] "Sri Lanka"                 "Sweden"           "Switzerland"               "Syrian Arab Republic"     
+# [53] "Trinidad and Tobago"       "Ukraine"          "United Kingdom"            "United States"            
+# [57] "Uzbekistan"                "Venezuela"        "Yemen"                     "Zimbabwe"
 
 final_declining_emissions <- model_stats %>% 
   filter(slope_estimate < 0, sig_alpha_.05 == 1) %>%
@@ -617,7 +649,7 @@ model_stats_2 <- model_summaries_2 %>%
 count(model_stats_2 , sig_alpha_.05)
 #   sig_alpha_.05     n
 # 1             0    15
-# 2             1   137
+# 2             1   140
 
 # What countries do not have significant slopes? 
   # What are their average emissions from 2000 onward - slope? p-value?
@@ -664,12 +696,11 @@ rising_emissions_slope_data %>%
           p_value) %>%
   distinct()
 
-#   country          avg_emissions slope_estimate p_value      
-# 1 Canada                 565.            -0.064 0.0391       
-# 2 Greenland                0.602         -0.092 0.00139      
-# 3 Macao SAR, China         1.43          -0.068 0.0262       
-# 4 Netherlands            165.            -0.125 0.0000003    
-# 5 Switzerland             41.3           -0.133 0.00000000423
+#   country                  avg_emissions slope_estimate p_value 
+# 1 Canada                         565.0            -0.014 0.0391  
+# 2 Dem. People's Rep. Korea        53.4           -0.031 0.000916
+# 3 Greenland                        0.602         -0.027 0.00139 
+# 4 Macao SAR, China                 1.43          -0.022 0.0262
 
 # *** Will omit for now. these slopes on normalized emissions are nearly 0
 
@@ -682,46 +713,48 @@ model_stats_2 %>%
 # [4] "Anguilla"                          "Antarctica"                        "Antigua and Barbuda"              
 # [7] "Argentina"                         "Armenia"                           "Australia"                        
 # [10] "Azerbaijan"                        "Bahrain"                           "Bangladesh"                       
-# [13] "Belize"                            "Benin"                             "Bhutan"                           
-# [16] "Bolivia"                           "Bonaire, Saint Eustatius and Saba" "Bosnia and Herzegovina"           
-# [19] "Botswana"                          "Brunei"                            "Burkina Faso"                     
-# [22] "Burundi"                           "Cabo Verde"                        "Cambodia"                         
-# [25] "Cameroon"                          "Chad"                              "Chile"                            
-# [28] "China"                             "Colombia"                          "Comoros"                          
-# [31] "Congo"                             "Costa Rica"                        "Côte d'Ivoire"                    
-# [34] "Dem. Rep. Congo"                   "Dominica"                          "Dominican Republic"               
-# [37] "Ecuador"                           "Egypt"                             "El Salvador"                      
-# [40] "Ethiopia"                          "Fiji"                              "French Polynesia"                 
-# [43] "Georgia"                           "Ghana"                             "Grenada"                          
-# [46] "Guatemala"                         "Guinea"                            "Guinea-Bissau"                    
-# [49] "Guyana"                            "Haiti"                             "Honduras"                         
-# [52] "Iceland"                           "India"                             "Indonesia"                        
-# [55] "Iran"                              "Iraq"                              "Kazakhstan"                       
-# [58] "Kenya"                             "Kiribati"                          "Korea"                            
-# [61] "Kosovo"                            "Kuwait"                            "Lao PDR"                          
-# [64] "Lebanon"                           "Lesotho"                           "Liberia"                          
-# [67] "Madagascar"                        "Malawi"                            "Malaysia"                         
-# [70] "Maldives"                          "Mali"                              "Marshall Islands"                 
-# [73] "Mauritania"                        "Mauritius"                         "Mexico"                           
-# [76] "Mongolia"                          "Montenegro"                        "Morocco"                          
-# [79] "Mozambique"                        "Myanmar"                           "Namibia"                          
-# [82] "Nepal"                             "New Caledonia"                     "Nicaragua"                        
-# [85] "Niger"                             "Nigeria"                           "Niue"                             
-# [88] "Oman"                              "Pakistan"                          "Panama"                           
-# [91] "Papua New Guinea"                  "Paraguay"                          "Peru"                             
-# [94] "Philippines"                       "Qatar"                             "Russia"                           
-# [97] "Rwanda"                            "Saint Helena"                      "Samoa"                            
-# [100] "Saudi Arabia"                      "Senegal"                           "Seychelles"                       
-# [103] "Sierra Leone"                      "Solomon Islands"                   "Somalia"                          
-# [106] "South Sudan"                       "St. Kitts and Nevis"               "St. Lucia"                        
-# [109] "St. Vincent and the Grenadines"    "Sudan"                             "Suriname"                         
-# [112] "São Tomé and Principe"             "Taiwan"                            "Tajikistan"                       
-# [115] "Tanzania"                          "Thailand"                          "The Gambia"                       
-# [118] "Timor-Leste"                       "Togo"                              "Tonga"                            
-# [121] "Tunisia"                           "Turkmenistan"                      "Turks and Caicos Islands"         
-# [124] "Tuvalu"                            "Türkiye"                           "Uganda"                           
-# [127] "United Arab Emirates"              "Uruguay"                           "Vanuatu"                          
-# [130] "Viet Nam"                          "West Bank and Gaza"                "Zambia"  
+# [13] "Belarus"                           "Belize"                            "Benin"                            
+# [16] "Bhutan"                            "Bolivia"                           "Bonaire, Saint Eustatius and Saba"
+# [19] "Bosnia and Herzegovina"            "Botswana"                          "Brunei"                           
+# [22] "Burkina Faso"                      "Burundi"                           "Cabo Verde"                       
+# [25] "Cambodia"                          "Cameroon"                          "Chad"                             
+# [28] "Chile"                             "China"                             "Colombia"                         
+# [31] "Comoros"                           "Congo"                             "Costa Rica"                       
+# [34] "Côte d'Ivoire"                     "Dem. Rep. Congo"                   "Dominica"                         
+# [37] "Dominican Republic"                "Ecuador"                           "Egypt"                            
+# [40] "El Salvador"                       "Ethiopia"                          "Fiji"                             
+# [43] "French Polynesia"                  "Georgia"                           "Ghana"                            
+# [46] "Grenada"                           "Guatemala"                         "Guinea"                           
+# [49] "Guinea-Bissau"                     "Guyana"                            "Haiti"                            
+# [52] "Honduras"                          "Iceland"                           "India"                            
+# [55] "Indonesia"                         "Iran"                              "Iraq"                             
+# [58] "Kazakhstan"                        "Kenya"                             "Kiribati"                         
+# [61] "Korea"                             "Kosovo"                            "Kuwait"                           
+# [64] "Kyrgyz Republic"                   "Lao PDR"                           "Lebanon"                          
+# [67] "Lesotho"                           "Liberia"                           "Madagascar"                       
+# [70] "Malawi"                            "Malaysia"                          "Maldives"                         
+# [73] "Mali"                              "Marshall Islands"                  "Mauritania"                       
+# [76] "Mauritius"                         "Mexico"                            "Moldova"                          
+# [79] "Mongolia"                          "Montenegro"                        "Morocco"                          
+# [82] "Mozambique"                        "Myanmar"                           "Namibia"                          
+# [85] "Nepal"                             "New Caledonia"                     "Nicaragua"                        
+# [88] "Niger"                             "Nigeria"                           "Niue"                             
+# [91] "Oman"                              "Pakistan"                          "Panama"                           
+# [94] "Papua New Guinea"                  "Paraguay"                          "Peru"                             
+# [97] "Philippines"                       "Qatar"                             "Russia"                           
+# [100] "Rwanda"                            "Saint Helena"                      "Samoa"                            
+# [103] "Saudi Arabia"                      "Senegal"                           "Seychelles"                       
+# [106] "Sierra Leone"                      "Solomon Islands"                   "Somalia"                          
+# [109] "South Sudan"                       "St. Kitts and Nevis"               "St. Lucia"                        
+# [112] "St. Vincent and the Grenadines"    "Sudan"                             "Suriname"                         
+# [115] "São Tomé and Principe"             "Taiwan"                            "Tajikistan"                       
+# [118] "Tanzania"                          "Thailand"                          "The Bahamas"                      
+# [121] "The Gambia"                        "Timor-Leste"                       "Togo"                             
+# [124] "Tonga"                             "Tunisia"                           "Turkmenistan"                     
+# [127] "Turks and Caicos Islands"          "Tuvalu"                            "Türkiye"                          
+# [130] "Uganda"                            "United Arab Emirates"              "Uruguay"                          
+# [133] "Vanuatu"                           "Viet Nam"                          "West Bank and Gaza"               
+# [136] "Zambia"  
 
 final_rising_emissions <- model_stats_2 %>% 
   filter(sig_alpha_.05 == 1, positive_slope_indicator ==1) %>%
@@ -731,6 +764,44 @@ final_rising_emissions <- model_stats_2 %>%
 
 # Modeling Dataframe ------------------------------------------------------
 
+# Adding slope estimates for total and per capita:
+
+# For interpretable world plots
+plot_model_summaries <- emissions_dt_2 %>%
+  select(country, year, total, per_capita) %>%
+  filter(year >= 2000) %>%
+  group_by(country) %>%
+  nest() %>%
+  reframe(
+    model_tot = map(data, .f = ~ lm(total ~ year, data = .x)),
+    summary_tot = map(model_tot, broom::tidy),
+    model_per_capita = map(data, .f = ~ lm(per_capita ~ year, data = .x)),
+    summary_per_capita = map(model_per_capita, broom::tidy)
+  )
+
+# slope of total and per capita
+tot_model_stats <- plot_model_summaries %>%
+  select(country, summary_tot) %>%
+  unnest(summary_tot) %>%
+  group_by(country) %>%
+  reframe(
+    tot_slope_estimate = round(estimate[2], 3)
+  ) %>% 
+  ungroup() %>%
+  distinct(country, .keep_all = T)
+
+per_capita_model_stats <- plot_model_summaries %>%
+  select(country, summary_per_capita) %>%
+  unnest(summary_per_capita) %>%
+  group_by(country) %>%
+  reframe(
+    per_capita_slope_estimate = round(estimate[2], 3)
+  ) %>% 
+  ungroup() %>%
+  distinct(country, .keep_all = T)
+
+# Remember case when based on declining emissions indicator
+
 # Combine emissions and indicator data
 candidate_vars <- emissions_dt_2 %>%
   # Removing the following variables from scope
@@ -739,12 +810,16 @@ candidate_vars <- emissions_dt_2 %>%
   mutate(declining_emissions_indicator = 
            case_when(country %in% final_declining_emissions$country ~ 'declining',
                      country %in% final_rising_emissions$country ~ 'rising',
-                     TRUE ~ 'insignificant_trend')) %>%
+                     TRUE ~ 'insignificant_trend') %>%
+           as.factor()) %>%
   group_by(country) %>%
   # min-max normalization of total by country
   left_join(final_rising_emissions, by = 'country') %>%
   left_join(final_declining_emissions, by = 'country') %>%
-  mutate(norm_tot = min_max_normalize(total)) %>%
+  left_join(tot_model_stats, by = 'country') %>%
+  left_join(per_capita_model_stats, by = 'country') %>%
+  mutate(country = as.factor(country), 
+         norm_tot = min_max_normalize(total)) %>%
   ungroup() %>%
   left_join(wdi_filtered_3, by = c('country_code', 'year')) %>%
   filter(
@@ -773,13 +848,13 @@ candidate_vars <- emissions_dt_2 %>%
 
 count(candidate_vars %>% distinct(country, .keep_all = T), declining_emissions_indicator)
 #   declining_emissions_indicator     n
-# 1 declining                        61
-# 2 insignificant_trend              18
-# 3 rising                          125 
+# 1 declining                        58
+# 2 insignificant_trend              17
+# 3 rising                          129 
 
 
 # Save modeling_df
-# fwrite(candidate_vars, file = './datasets/Emissions/modeling_df.rds')
+fwrite(candidate_vars, file = './datasets/Emissions/modeling_df.rds')
 
 
 
