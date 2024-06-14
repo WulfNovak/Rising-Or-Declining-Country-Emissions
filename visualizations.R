@@ -24,7 +24,8 @@ emissions_dt_2 <- fread(file = './datasets/Emissions/emissions_dt_2.rds')
 modeling_df <- fread(file = './datasets/Emissions/modeling_df.rds') %>% 
   select(country, country_code, year, total, declining_emissions_indicator, norm_tot,
          slope_estimate_rising, slope_estimate_declining, 
-         sig_alpha_.05_rising, sig_alpha_.05_declining) %>%
+         sig_alpha_.05_rising, sig_alpha_.05_declining,
+         tot_slope_estimate, per_capita_slope_estimate) %>%
   group_by(year, declining_emissions_indicator) %>%
   # for rising/declining emissions plots
   mutate(avg_emissions_by_year = mean(total, na.rm = T), 
@@ -249,112 +250,108 @@ test <- ggplot(data = decline_plot_df,
 
 librarian::shelf(leaflet, geojsonio, htmlwidgets)
 
-# Load GeoJSON data for countries
-geojson_url <- "https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json"
-world_geojson <- geojson_read(geojson_url, what = "sp")
-
 # create dataframe for choropleth plots
 mapping_df <- modeling_df %>% 
   # may engineer other features 
   select(country, id = country_code, declining_emissions_indicator,
-         slope_estimate_rising, slope_estimate_declining) %>%
+         slope_estimate_rising, slope_estimate_declining,
+         tot_slope_estimate, per_capita_slope_estimate) %>%
   mutate(trend = # slope was calculated on normalized total emissions values
            case_when(
              is.na(slope_estimate_rising) == TRUE & is.na(slope_estimate_declining) == TRUE ~ 0,
              is.na(slope_estimate_rising) == TRUE ~ slope_estimate_declining,
              is.na(slope_estimate_declining) == TRUE ~ slope_estimate_rising),
-         binary_trend = case_when(trend < 0 ~ -1, #'declining',
-                                  trend > 0 ~ 1, #'rising',
-                                  TRUE ~ 0) #'insignificant trend'
-         ) %>% #'insignificant'
+         binary_trend = case_when(trend < 0 ~ 'declining',
+                                  trend > 0 ~ 'rising',
+                                  TRUE ~ 'insignificant trend')
+  ) %>% #'insignificant'
   select(-starts_with('slope')) %>%
   distinct(country, .keep_all = T)
 
-######
-## *** Need to make trend value more interpretable - ranking? 0 to 1?
-######
-
+# Load GeoJSON data for countries
+geojson_url <- "https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json"
+world_geojson <- geojson_read(geojson_url, what = "sp")
 
 # Replace data with added variables
- join_df <- world_geojson@data %>%
-   left_join(mapping_df, by = 'id')
- world_geojson@data <- join_df
-
-ggplot(mapping_df, aes(x = trend)) + 
-  geom_density()
+join_df <- world_geojson@data %>%
+  left_join(mapping_df, by = 'id')
+world_geojson@data <- join_df
  
-# Create a color palette
+# Leaflet Map Function
+leaflet_map <- function(data, variable, palette, legend_title, map_save_name){
+  
+  map_name <- leaflet(data,
+          options = leafletOptions(minZoom = 2.34)
+  ) %>%
+    addTiles() %>%
+    addPolygons(
+      fillColor = ~palette(variable),
+      weight = 1,
+      opacity = 1,
+      color = "#655",
+      fillOpacity = 0.6,
+      highlight = highlightOptions(
+        weight = 3,
+        color = "white",
+        fillOpacity = .9,
+        bringToFront = TRUE
+      ),
+      label = ~paste(name, ": ", variable), # ,//n trend: , trend)
+      labelOptions = labelOptions(
+        style = list("font-weight" = "normal", padding = "3px 8px"),
+        textsize = "15px",
+        direction = "auto"
+      )
+    ) %>%
+    addLegend(pal = palette, values = ~variable, opacity = 0.7,
+              title = legend_title, position = "bottomright") %>%
+    setView(lng = 0, lat = 0, zoom = 1)
+  
+  file <- paste0("./R Projects/Emissions-Data-Analysis/Plots/", map_save_name, '.html')
+  saveWidget(map_name,
+             file = file)
+}
+
+# *** Add units to maps?
+
+## Choropleth of trend variable
+data <- world_geojson
 palette <- colorBin(palette = "plasma", domain = world_geojson@data$trend, bins = 12)
+legend_title <- htmltools::HTML("Min-Max<br>Normalized Slope")
+variable <- world_geojson$trend
+map_save_name <- 'trend_choropleth'
 
-## if a lot of choropleth maps are to be made, create function
+leaflet_map(data, variable, palette, legend_title, map_save_name)
 
-# Create the leaflet map
-trend_choropleth <- leaflet(world_geojson,
-                            options = leafletOptions(minZoom = 2.34)
-                            ) %>%
-  addTiles() %>%
-  addPolygons(
-    fillColor = ~palette(trend),
-    weight = 1,
-    opacity = 1,
-    color = "#655",
-    #dashArray = "3",
-    fillOpacity = 0.6,
-    highlight = highlightOptions(
-      weight = 3,
-      color = "white",
-      #dashArray = "",
-      fillOpacity = .9,
-      bringToFront = TRUE
-    ),
-    label = ~paste(name, ": ", trend), # ,//n trend: , trend)
-    labelOptions = labelOptions(
-      style = list("font-weight" = "normal", padding = "3px 8px"),
-      textsize = "15px",
-      direction = "auto"
-    )
-  ) %>%
-  addLegend(pal = palette, values = ~trend, opacity = 0.7,
-            title = "normalized slope", position = "bottomright") %>%
-  setView(lng = 0, lat = 0, zoom = 1)
-# think of how these values can be interpreted
+## Binary Trend Map
+# data <- world_geojson # same
+palette <- colorFactor(palette = "plasma", 
+                       domain = world_geojson@data$binary_trend)
+legend_title <- htmltools::HTML("Total Emissions<br>Country Trend")
+variable <- world_geojson$binary_trend
+map_save_name <- 'binary_trend_map'
 
-saveWidget(trend_choropleth,
-           file = "./R Projects/Emissions-Data-Analysis/Plots/trend_choropleth.html")
+leaflet_map(data, variable, palette, legend_title, map_save_name)
 
-# Binary Trend Map
-palette <- colorBin(palette = "plasma", domain = world_geojson@data$binary_trend, bins = 3)
-binary_trend_map <- leaflet(world_geojson,
-                            options = leafletOptions(minZoom = 2.34)) %>%
-  addTiles() %>%
-  addPolygons(
-    fillColor = ~palette(binary_trend),
-    weight = 1,
-    opacity = 1,
-    color = "#655",
-    #dashArray = "3",
-    fillOpacity = 0.6,
-    highlight = highlightOptions(
-      weight = 3,
-      color = "white",
-      #dashArray = "",
-      fillOpacity = .9,
-      bringToFront = TRUE
-    ),
-    label = ~paste(name, ": ", binary_trend), # ,//n trend: , trend)
-    labelOptions = labelOptions(
-      style = list("font-weight" = "normal", padding = "3px 8px"),
-      textsize = "15px",
-      direction = "auto"
-    )
-  ) %>%
-  addLegend(pal = palette, values = ~binary_trend, opacity = 0.7,
-            title = "-1 = Declining, 1 = Rising", position = "bottomright") %>%
-  setView(lng = 0, lat = 0, zoom = 1)
-# think of how these values can be interpreted
+# total emissions slope map
+palette <- colorBin(palette = 'plasma',
+                    domain = world_geojson@data$tot_slope_estimate)
+legend_title <- htmltools::HTML("Absolute Total Emissions<br>Country Trend")
+variable <- world_geojson$tot_slope_estimate
+map_save_name <- 'tot_emissions_trend'
 
-saveWidget(binary_trend_map, 
-           file = "./R Projects/Emissions-Data-Analysis/Plots/binary_trend_map.html")
+leaflet_map(data, variable, palette, legend_title, map_save_name)
+
+# per capita slope map
+palette <- colorBin(palette = 'plasma',
+                    domain = world_geojson@data$per_capita_slope_estimate)
+legend_title <- htmltools::HTML("Per Capita Emissions<br>Country Trend")
+variable <- world_geojson$per_capita_slope_estimate
+map_save_name <- 'per_capita_trend'
+
+leaflet_map(data, variable, palette, legend_title, map_save_name)
+
+
 
 ### For animated time series
 # Things to Consider:
