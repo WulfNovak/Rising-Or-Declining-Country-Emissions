@@ -11,4 +11,4 @@ The following is underway:
 * Testing the following clustering algotherithms to partition countries to
   rising and declining emissions categories.
   (GBTM), growth mixture modeling (GMM), and longitudinal k-means (KML)
-
+* Generalized Linear Mixed Model Study and experimentation.
