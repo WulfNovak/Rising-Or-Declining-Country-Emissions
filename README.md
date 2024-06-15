@@ -1,7 +1,7 @@
 # Data Analysis on World Emissions Data
 
 Project Notes: 
-* Interactive Maps can be seen here: https://wulfnovak.github.io/
+* Interactive Maps can be seen here: https://wulfnovak.github.io/ - More will be added
 * For the time being, plots from the emissions_eda script are provided in the 'Plots' folder
 * Categorized development indicators are made available in the 'Data' folder
   * (These may not be used in further analysis due to NAs)
