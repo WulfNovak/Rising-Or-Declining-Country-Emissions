@@ -8,7 +8,7 @@ Project Notes:
 
 The following is underway:
 * Determining if any development indicators can be used despite lack of coverage
-* Testing the following clustering algotherithms to partition countries to
+* Testing the following clustering algorithms to partition countries into
   rising and declining emissions categories.
   (GBTM), growth mixture modeling (GMM), and longitudinal k-means (KML)
 * Generalized Linear Mixed Model Study and experimentation.
