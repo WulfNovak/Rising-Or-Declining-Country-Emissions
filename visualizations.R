@@ -25,16 +25,14 @@ modeling_df <- fread(file = './datasets/Emissions/modeling_df.rds') %>%
   select(country, country_code, year, total, declining_emissions_indicator, norm_tot,
          slope_estimate_rising, slope_estimate_declining, 
          sig_alpha_.05_rising, sig_alpha_.05_declining,
-         tot_slope_estimate, per_capita_slope_estimate) %>%
+         tot_slope_estimate, per_capita_slope_estimate,
+         nt_clust, clust_slope_decline) %>%
   group_by(year, declining_emissions_indicator) %>%
   # for rising/declining emissions plots
   mutate(avg_emissions_by_year = mean(total, na.rm = T), 
          norm_avg_emissions_by_year = mean(norm_tot, na.rm = T)) %>%
   ungroup()
   
-# Indicator variables, model results
-
-
 # C02 Emissions Visualization ---------------------------------------------
 
 ## Df for plotting total Emissions by country Over Time
@@ -123,7 +121,7 @@ plot_2 <- ggplot(plot_df_2 %>% filter(year >= 1850),
   )
 
 # ggsave('global_percent_emissions_by_cat.svg', plot = plot_2,
-#        path = 'C:/Users/WulfN/R Projects/Emissions-Data-Analysis')
+#        path = './R Projects/Emissions-Data-Analysis')
 
 # oil and gas has contributed a greater percentage to global_emissions up through
 # The 1970s, but has plateaued or is decreasing since then. 
@@ -165,12 +163,11 @@ plot_3 <- ggplot(plot_df_3 %>% filter(year >= 1850),
   )
 
 # ggsave('global_total_emissions_by_cat.svg', plot = plot_3,
-#        path = 'C:/Users/WulfN/R Projects/Emissions-Data-Analysis')
+#        path = './R Projects/Emissions-Data-Analysis')
 
 # total Emissions has steadily risen, but has arguably plateaued after 2000.
 # global_gas emissions has steadily increased, despite the total emissions trend. 
 # Tonnes is equivalent to 1,000 Kilograms
-
 
 # Rising / Declining Emissions Visualization ------------------------------
 
@@ -179,7 +176,7 @@ rise_plot_df <- modeling_df %>%
   filter(declining_emissions_indicator == 'rising')
 
 # Countries with Rising min-max normalized C02 Emissions Average 
-ggplot(data = rise_plot_df %>% distinct(year, .keep_all = T), 
+plot_4 <- ggplot(data = rise_plot_df %>% distinct(year, .keep_all = T), 
        aes(x = year, y = norm_avg_emissions_by_year, color = country)) +
   geom_area(show.legend = F) +
   scale_y_continuous(limits = c(0:1), n.breaks = 7) +
@@ -193,8 +190,11 @@ ggplot(data = rise_plot_df %>% distinct(year, .keep_all = T),
     y = 'Normalized Average'
   )
 
+ggsave('rising_normalized_emissions.svg', plot = plot_4,
+       path = './R Projects/Emissions-Data-Analysis/Plots')
+
 # All Countries
-ggplot(data = rise_plot_df, 
+plot_5 <- ggplot(data = rise_plot_df, 
        aes(x = year, y = norm_tot, color = country)) +
   geom_line(show.legend = F) +
   scale_y_continuous(limits = c(0:1), n.breaks = 7) +
@@ -209,14 +209,15 @@ ggplot(data = rise_plot_df,
     y = 'Normalized Average'
   )
 
-# Shiny App - alphabetical drop-down of country, then emissions trend. 
+ggsave('avg_rising_normalized_emissions.svg', plot = plot_5,
+       path = './R Projects/Emissions-Data-Analysis/Plots')
 
 ### Declining
 decline_plot_df <- modeling_df %>%
   filter(declining_emissions_indicator == 'declining')
 
 # Countries with Declining min-max normalized C02 Emissions Average 
-ggplot(data = decline_plot_df %>% distinct(year, .keep_all = T), 
+plot_6 <- ggplot(data = decline_plot_df %>% distinct(year, .keep_all = T), 
        aes(x = year, y = norm_avg_emissions_by_year, color = country)) +
   geom_area(show.legend = F) +
   scale_y_continuous(limits = c(0:1),  n.breaks = 7) +
@@ -230,11 +231,13 @@ ggplot(data = decline_plot_df %>% distinct(year, .keep_all = T),
     y = 'Normalized Average'
   ) # years with economic recessions have lower emissions 
 
+ggsave('avg_declining_normalized_emissions.svg', plot = plot_6,
+       path = './R Projects/Emissions-Data-Analysis/Plots')
+
 # All Countries
-test <- ggplot(data = decline_plot_df, 
-       aes(x = year, y = total, color = country)) +
+plot_7 <- ggplot(data = decline_plot_df, 
+       aes(x = year, y = norm_tot, color = country)) +
   geom_line(show.legend = F) +
-  #scale_y_continuous(limits = c(0:1),  n.breaks = 7) +
   scale_x_continuous(expand = c(0.01, 0)) + 
   scale_color_viridis_d(option = 'E') +
   theme_minimal() + 
@@ -245,10 +248,13 @@ test <- ggplot(data = decline_plot_df,
     y = 'Normalized Average'
   )
 
+ggsave('declining_normalized_emissions.svg', plot = plot_7,
+       path = './R Projects/Emissions-Data-Analysis/Plots')
 
 # Choropleth --------------------------------------------------------------
 
-librarian::shelf(leaflet, geojsonio, htmlwidgets)
+librarian::shelf(leaflet, geojsonio, htmlwidgets, gganimate, 
+                 leaflet.extras2, sf, viridis, gifski)
 
 # create dataframe for choropleth plots
 mapping_df <- modeling_df %>% 
@@ -351,32 +357,48 @@ map_save_name <- 'per_capita_trend'
 
 leaflet_map(data, variable, palette, legend_title, map_save_name)
 
-
-
 ### For animated time series
-# Things to Consider:
-# 1. What vars are best seen over time
-#   a. highly correlated vars
-#     - visual for country whose emissions rise or fall?
-#   b. total emissions over time
+
+# prepare dataset
+# Load GeoJSON data for countries
+geojson_url <- "https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json"
+
+animated_map_dt <- read_sf(geojson_url) %>%
+  left_join(modeling_df %>%
+              select(country, id = country_code, year, norm_tot, 
+                     declining_emissions_indicator, clust_slope_decline, nt_clust), 
+            by = 'id')
+
+# Color palette
+# palette <- colorBin(palette = "plasma", domain = world_geojson@data$trend, bins = 12)
+# legend_title <- htmltools::HTML("Min-Max<br>Normalized Slope")
+
+map_base <- animated_map_dt %>%
+  ggplot(aes(fill = norm_tot,
+             group = country
+             #text = str_c(id, ": ", norm_tot)
+             )) + 
+  geom_sf(colour = NA) + # colour = NA removes boundaries
+  scale_fill_viridis_c(option = "plasma") +
+  theme_minimal() +
+  theme(axis.title.y = element_text(margin = margin(r = 12, unit = "pt")),
+        legend.position = c(.1, .25)) +
+  transition_time(year) + 
+  # ease_aes('cubic-in-out') +
+  pause_end(pause_length = 10) +
+  labs(
+    title = 'Normalized Country Emissions, for Year {frame_time}',
+    subtitle = 'From 2000 to 2022: 1 = highest emissions, 0 = lowest emissions'
+  )
+
+animated_map <- animate(map_base, 
+                        renderer = gifski_renderer('norm_tot_animation.gif'),
+                        fps = 3,
+                        end_pause = 9)
+
+anim_save(filename = "./WulfNovak.github.io/docs/norm_tot_animation.gif", 
+          width = 800, height = 600, res = 5000, animation = animated_map) 
 
 
 
-# %>%
-#   addTimeSlider(
-#     timeSeriesData = time_series_data,
-#     timeField = "time_period",
-#     timeInterval = 1000, # Animation speed
-#     onChange = function(map, time) {
-#       leafletProxy(map) %>%
-#         clearShapes() %>%
-#         addPolygons(
-#           data = spatial_data %>% filter(time_period == time),
-#           fillColor = ~pal(value),
-#           color = "white",
-#           weight = 2,
-#           opacity = 1,
-#           fillOpacity = 0.7
-#         )
-#     }
-#   )
+
