@@ -18,14 +18,12 @@
 
 source('./R Projects/Emissions-Data-Analysis/Setup.R')
 
-librarian::shelf(lme4)
-librarian::shelf(randomForest)
+librarian::shelf(lme4, randomForest)
 
 # Read in Data
 modeling_df <- fread('./datasets/Emissions/modeling_df.rds') %>%
   # restrict to variables of interest
-  select(-c('country_code', starts_with('sig_'), contains('slope_'),
-            'total', 'oil', 'coal', 'gas', 'per_capita')) %>%
+  select(-c('country_code', starts_with('sig_'), contains('slope_'))) %>%
   filter(!declining_emissions_indicator == 'insignificant_trend') %>%
   mutate(declining_emissions_indicator = 
            case_when(declining_emissions_indicator == 'declining' ~ 1,
@@ -34,68 +32,39 @@ modeling_df <- fread('./datasets/Emissions/modeling_df.rds') %>%
          year = year %>% as.numeric(),
          country = country %>% as.factor())
 
+# Due to vast NAs with Development indicators, reducing scope greatly
+modeling_df_2 <- modeling_df %>%
+  select(country, year, coal, oil, gas, declining_emissions_indicator) %>%
+  # omit years 2000 and 2001 for Timor-Leste (NAs for Coal and Gas) %>%
+  na.omit() %>%
+  group_by(country) %>%
+  mutate(coal = scale(coal)[,1],
+         gas = scale(gas)[,1],
+         oil = scale(oil)[,1]) %>%
+  ungroup()
+  
+
 # Model Preparation -------------------------------------------------------
 
-## Assess percentage of missing values of variables by country
+# predict rising/declining indicator with coal / oil / gas
+  # changes in what best predict decline in total emissions?
 
+# Mixed effects linear model
 
-# Mixed effects: random = time, country
-# norm_tot, per_capita
-# Variable selection
+# nlmer
+model_1 <- glmer(declining_emissions_indicator ~ 
+                   coal + oil + gas + (1 | country),
+                 data = modeling_df_2, 
+                 family = 'binomial')
 
-# # MICE imputation
-# librarian::shelf(mice)
-# 
-# # currently imputing by country - how to account for trends between countries?
-# start <- Sys.time()
-# imputed_modeling_df <- modeling_df %>%
-#   # impute at the country level
-#   group_by(country) %>%
-#   mice(m = 100, seed = 43, print = FALSE, #method = rf, #maxit = 10, number of iterations (have enough iterations for mean convergence)
-#                             # visitSequence / blocks = country, year?
-#                             ) %>%
-#   ungroup()
-# end <- Sys.time()
-# compute_time_default <- abs(start - end)
-
-### Map to impute data at the country level
-librarian::shelf(mice)
-
-start <- Sys.time()
-test <- modeling_df %>%
-  group_by(country) %>%
-  group_split()
-
-# if column sum of NAs is greater than x%, remove variable? 
-
-test_v2 <- test[[1]] %>% mice(m = 100, seed = 43, print = FALSE)
- 
-  # map_dfr(.x = .,
-  #         .f = ~mice(data = ., m = 100, seed = 43, print = FALSE)) %>%
-  # ungroup()
-
-end <- Sys.time()
-compute_time_default <- abs(start - end)
-
-### Consider writing own imputation method
-
-
-
-# country by country vip
-
-# # Fit a 1st pass mixed-effects model
-# model <- glmer(
-#   declining_emissions_indicator ~ . - country - year + (1 | country) + (1 | year), 
-#   data = modeling_df,
-#   family = binomial)
-# 
-# summary(model)
-# 
-# # Check variable importance
-# stepAIC(model, direction = "both")
-
-
-
+# Fixed effects:
+#   Estimate     Std. Error z value            Pr(>|z|)    
+# (Intercept) -15.0633232186   1.4562534607  -10.34 <0.0000000000000002 ***
+# coal         -0.0000004543   0.7728676296    0.00                   1    
+# oil           0.0000001968   0.7745200793    0.00                   1    
+# gas          -0.0000003011   0.7335881109    0.00                   1    
+# ---
+#   Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 
 
 

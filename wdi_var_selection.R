@@ -88,6 +88,14 @@ ggplot(distn_perc_missing, aes(x = num_countries_all_na)) +
 # impute by clustering on countries with similar values in other variables?
 # pool values by year of variable for that cluster
 
+###
+selected_wdi_vars <- perc_missing %>% 
+  filter(indicator_name %in% distn_perc_missing$indicator_name) %>%
+  select(-c('perc_na', 'global_perc_na')) %>%
+  pivot_wider(names_from = indicator_name, values_from = value) %>%
+  clean_names()
+
+selected_wdi_vars
 
 # Cluster on emissions data OR GDP to classify countries by their output
 
@@ -113,7 +121,11 @@ country_emissions_stats <- emissions_dt_2 %>%
   ) %>%
   ungroup() %>%
   mutate(across(starts_with(c('tot_', 'per_capita_')),
-                .f = ~scale(.)[ ,1])) %>%
+                .f = ~scale(.)[ ,1]))
+
+distn_var <- ggplot()
+
+country_emissions_stats_2 <- country_emissions_stats %>%
   distinct(country, .keep_all = T)
 
 # scale dataframe
