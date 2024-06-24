@@ -261,7 +261,8 @@ mapping_df <- modeling_df %>%
   # may engineer other features 
   select(country, id = country_code, declining_emissions_indicator,
          slope_estimate_rising, slope_estimate_declining,
-         tot_slope_estimate, per_capita_slope_estimate) %>%
+         tot_slope_estimate, per_capita_slope_estimate,
+         nt_clust) %>%
   mutate(trend = # slope was calculated on normalized total emissions values
            case_when(
              is.na(slope_estimate_rising) == TRUE & is.na(slope_estimate_declining) == TRUE ~ 0,
@@ -269,8 +270,12 @@ mapping_df <- modeling_df %>%
              is.na(slope_estimate_declining) == TRUE ~ slope_estimate_rising),
          binary_trend = case_when(trend < 0 ~ 'declining',
                                   trend > 0 ~ 'rising',
-                                  TRUE ~ 'insignificant trend')
-  ) %>% #'insignificant'
+                                  TRUE ~ 'insignificant trend'),
+         clust_trend = case_when(
+           nt_clust == 'declining' ~ 'declining',
+           nt_clust == 'non_declining' ~ 'non-declining',
+           TRUE ~ NA)
+  ) %>% 
   select(-starts_with('slope')) %>%
   distinct(country, .keep_all = T)
 
@@ -313,12 +318,10 @@ leaflet_map <- function(data, variable, palette, legend_title, map_save_name){
               title = legend_title, position = "bottomright") %>%
     setView(lng = 0, lat = 0, zoom = 1)
   
-  file <- paste0("./R Projects/Emissions-Data-Analysis/Plots/", map_save_name, '.html')
+  file <- paste0("./WulfNovak.github.io/docs/", map_save_name, '.html')
   saveWidget(map_name,
              file = file)
 }
-
-# *** Add units to maps?
 
 ## Choropleth of trend variable
 data <- world_geojson
@@ -356,6 +359,16 @@ variable <- world_geojson$per_capita_slope_estimate
 map_save_name <- 'per_capita_trend'
 
 leaflet_map(data, variable, palette, legend_title, map_save_name)
+
+# Binary rising / declining by kml clustering
+palette <- colorFactor(palette = 'plasma',
+                    domain = world_geojson@data$clust_trend)
+legend_title <- htmltools::HTML("Total Emissions by<br>Longitudinal<br>Clustering")
+variable <- world_geojson$clust_trend
+map_save_name <- 'cluster_binary_trend'
+
+leaflet_map(data, variable, palette, legend_title, map_save_name)
+
 
 ### For animated time series
 
