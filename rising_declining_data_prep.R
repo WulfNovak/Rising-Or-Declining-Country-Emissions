@@ -1,8 +1,7 @@
 # ##############################################################################
 # Author: Wulf Novak
 #
-# Project: Development Indicators of Rising 
-#          and Declining country Emissions
+# Project: Rising / Declining Country Emissions
 #
 # Date: 2024-05-03
 #
@@ -20,8 +19,6 @@
 #       https://zenodo.org/records/7215364
 #       Convened by: Robbie M. Andrew and Glen Peters
 #
-#       World Development Indicators (wdi)
-#       https://datacatalog.worldbank.org/search/dataset/0037712/World-Development-Indicators
 
 source('./R Projects/Emissions-Data-Analysis/Setup.R')
 
@@ -36,9 +33,6 @@ emissions_dt <- fread('./datasets/Emissions/GCB2023v43_MtCO2_flat.csv') %>%
 wdi_country <- fread('./datasets/world_data/WDIcountry.csv') %>% 
   clean_names() %>%
   select(`country_code`, `short_name`)
-
-## per_capita Emissions - Currently Unneeded
-# per_capita <- fread('./datasets/Emissions/GCB2023v43_percapita_flat.csv')
 
 # Missing values for dataframes
 missing_vals(emissions_dt)
@@ -73,7 +67,7 @@ missing_vals(emissions_dt)
 range(emissions_dt$year)
 # 1750 to 2022
 
-### Any 'country' level stats to not consider? 
+### Any country level stats to not consider? 
 
 # emissions_dt %>% distinct(country) %>% View()
 # International Transport, Global, Kuwait oil Fires.
@@ -314,7 +308,7 @@ count(rising_stats , sig_alpha_.05)
 # What countries do not have significant slopes? 
   # What are their average emissions from 2000 onward - slope? p-value?
 rising_emissions_slope_data %>% 
-  right_join(model_stats_2, by = 'country') %>% 
+  right_join(rising_stats, by = 'country') %>% 
   group_by(country) %>%
   filter(year >= 2000,
          sig_alpha_.05 == 0) %>%
@@ -346,11 +340,11 @@ rising_emissions_slope_data %>%
 # What countries have significant slopes, but need to be removed due to negative slope?
   # avg emissions 2000 onward? slope? p-value?
 rising_emissions_slope_data %>% 
-  right_join(model_stats_2, by = 'country') %>% 
+  right_join(rising_stats, by = 'country') %>% 
   group_by(country) %>%
   filter(year >= 2000,
          sig_alpha_.05 == 1,
-         positive_slope_indicator == 0) %>%
+         slope_estimate <= 0) %>%
   reframe(avg_emissions = mean(total),
           slope_estimate,
           p_value) %>%
@@ -416,18 +410,16 @@ rising_stats %>%
 # [133] "Vanuatu"                           "Viet Nam"                          "West Bank and Gaza"               
 # [136] "Zambia"  
 
-final_rising_emissions <- model_stats_2 %>% 
-  filter(sig_alpha_.05 == 1, positive_slope_indicator ==1) %>%
+final_rising_emissions <- rising_stats %>% 
+  filter(sig_alpha_.05 == 1, slope_estimate > 0) %>%
   select(country, 
          slope_estimate_rising = slope_estimate, 
          sig_alpha_.05_rising = sig_alpha_.05)
 
 # Select Rising / Declining by Clustering ---------------------------------
 
-# Rising / Declining total emissions sections can be combined
-# Use function on full data set, disallow countries whose max year of emissions
-# occurred 2017 onward from have declining emissions
-
+# Rather than using slopes, utilize longitudinal clustering algorithm,
+# that will cluster by time series trends.
 
 # Data prep
 clust_data <- emissions_dt_2 %>%
@@ -447,20 +439,22 @@ clust_data_pc <- clust_data %>%
   pivot_wider(names_from = year, 
               values_from = per_capita)
 
+# Longitudinal k-means (KML) Clustering
+librarian::shelf(kml)
+
+# Format data for kml
 clust_data_norm_tot <- cld(idAll = clust_data_nt %>% pull(country),
                            traj = clust_data_nt %>% select(-country))
 
 clust_data_per_capita <- cld(idAll = clust_data_pc %>% pull(country),
                              traj = clust_data_pc %>% select(-country))
 
-# Longitudinal k-means (KML) Clustering
-librarian::shelf(kml)
-
 ## cluster on normalized total emissions usage
 set.seed(123)
 clust_norm_tot <- kml(clust_data_norm_tot, nbClusters = 2, 
                       nbRedrawing = 20, toPlot = "none")
-# using cluster partition 14 due to lowest calinksi harabatz 
+
+# Selecting cluster with lowest Calinksi Harabatz
 clusters_nt <- getClusters(clust_data_norm_tot, nbCluster = 2, 20)
 
 # cluster on per capita emissions usage
@@ -468,7 +462,7 @@ set.seed(123)
 clust_per_capita <- kml(clust_data_per_capita, nbClusters = 2, 
                         nbRedrawing = 20, toPlot = "none")
 
-# using cluster partition 15 due to lowest Calinksi Harabatz 
+# Selecting cluster with lowest Calinksi Harabatz
 clusters_pc <- getClusters(clust_data_per_capita, nbCluster = 2, 20)
 
 ## Clustering Results
@@ -481,11 +475,11 @@ clust_results <- tibble(
 
 # A = non-declining emissions, B = declining emissions
 count(clust_results, nt_clust)
-#   nt_clust     n
-# 1 A          149
-# 2 B           66
+#   nt_clust          n
+# 1 declining        66
+# 2 non_declining   149
 
-# Modeling Dataframe ------------------------------------------------------
+# Final Dataframe ---------------------------------------------------------
 
 # Adding slope estimates for total and per capita:
 
@@ -523,10 +517,8 @@ per_capita_model_stats <- plot_model_summaries %>%
   ungroup() %>%
   distinct(country, .keep_all = T)
 
-# Remember case when based on declining emissions indicator
-
 # Combine emissions and indicator data
-candidate_vars <- emissions_dt_2 %>%
+final_df <- emissions_dt_2 %>%
   # Removing the following variables from scope
   select(-c('cement', 'flaring', 'other')) %>%
   filter(year >= 2000) %>%
@@ -548,51 +540,27 @@ candidate_vars <- emissions_dt_2 %>%
            case_when(declining_emissions_indicator == 'declining' & nt_clust == 'declining' ~ 'declining',
                      TRUE ~ 'non-declining')
          ) %>%
-  ungroup() %>%
-  left_join(wdi_filtered_3, by = c('country_code', 'year')) %>%
-  filter(
-    # If country name from wdi dataset is NA, there is no indicator data
-    !is.na(country_name)
-    # Removed the following Countries: Also referenced in the wdi prep section
-    # [1] "Anguilla"                          "Antarctica"
-    # [3] "Bonaire, Saint Eustatius and Saba" "Cook Islands"
-    # [5] "Kosovo"                            "Montserrat"
-    # [7] "Niue"                              "Saint Helena"
-    # [9] "Saint Pierre and Miquelon"         "Taiwan"
-    # [11] "Wallis and Futuna Islands"
-    ) %>%
-  select(-country_name) # Duplicate of 'country'
+  ungroup() 
 
-# Countries without development data
-
-# The following countries are omitted by the Join:
-# [1] "Bahamas, The"              "Brunei Darussalam"         "Congo, Dem. Rep."         
-# [4] "Congo, Rep."               "Cote d'Ivoire"             "Curacao"                  
-# [7] "Egypt, Arab Rep."          "Gambia, The"               "Iran, Islamic Rep."       
-# [10] "Korea, Dem. People's Rep." "Korea, Rep."               "Micronesia, Fed. Sts."    
-# [13] "Russian Federation"        "Sao Tome and Principe"     "Turkiye"                  
-# [16] "Venezuela, RB"             "Yemen, Rep." 
-
-
-count(candidate_vars %>% distinct(country, .keep_all = T), declining_emissions_indicator)
+count(final_df %>% distinct(country, .keep_all = T), declining_emissions_indicator)
 #   declining_emissions_indicator     n
-# 1 declining                        58
-# 2 insignificant_trend              17
-# 3 rising                          129 
+# 1 declining                        60
+# 2 insignificant_trend              19
+# 3 rising                          136
 
-count(candidate_vars %>% distinct(country, .keep_all = T), nt_clust)
+count(final_df %>% distinct(country, .keep_all = T), nt_clust)
 #   nt_clust          n
-# 1 declining        64
-# 2 non_declining   140
+# 1 declining        66
+# 2 non_declining   149
 
 # Both clust and slope method give declining emissions
-count(candidate_vars %>% distinct(country, .keep_all = T), clust_slope_decline)
+count(final_df %>% distinct(country, .keep_all = T), clust_slope_decline)
 #   clust_slope_decline     n
-# 1 declining              49
-# 2 non-declining         155
+# 1 declining              50
+# 2 non-declining         165
 
 # Save modeling_df
-fwrite(candidate_vars, file = './datasets/Emissions/modeling_df.rds')
+fwrite(final_df, file = './datasets/Emissions/final_df.rds')
 
 
 

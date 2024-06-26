@@ -1,8 +1,7 @@
 # ##############################################################################
 # Author: Wulf Novak
 #
-# Project: Development Indicators of Rising 
-#          and Declining Country Emissions 
+# Project: Rising / Declining Country Emissions 
 #
 # Date: 2024-05-24
 #

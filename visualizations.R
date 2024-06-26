@@ -1,8 +1,7 @@
 # ##############################################################################
 # Author: Wulf Novak
 #
-# Project: Development Indicators of Rising 
-#          and Declining country Emissions
+# Project: Rising / Declining Country Emissions
 #
 # Date: 2024-05-24
 #
@@ -10,10 +9,11 @@
 # ------------------------------------------------------------------------------
 # Sections:
 # - Setup
-# - Visualization Section
-# - Etc
+# - C02 Emissions Visualization
+# - Rising / Declining Emissions Visualization
+# - Interactive Choropleth
+# - Animated Choropleth
 # ##############################################################################
-
 
 # Setup -------------------------------------------------------------------
 
@@ -21,7 +21,7 @@ source('./R Projects/Emissions-Data-Analysis/Setup.R')
 
 # read in data
 emissions_dt_2 <- fread(file = './datasets/Emissions/emissions_dt_2.rds')
-modeling_df <- fread(file = './datasets/Emissions/modeling_df.rds') %>% 
+final_df <- fread(file = './datasets/Emissions/final_df.rds') %>% 
   select(country, country_code, year, total, declining_emissions_indicator, norm_tot,
          slope_estimate_rising, slope_estimate_declining, 
          sig_alpha_.05_rising, sig_alpha_.05_declining,
@@ -172,7 +172,7 @@ plot_3 <- ggplot(plot_df_3 %>% filter(year >= 1850),
 # Rising / Declining Emissions Visualization ------------------------------
 
 ### Rising
-rise_plot_df <- modeling_df %>%
+rise_plot_df <- final_df %>%
   filter(declining_emissions_indicator == 'rising')
 
 # Countries with Rising min-max normalized C02 Emissions Average 
@@ -213,7 +213,7 @@ ggsave('avg_rising_normalized_emissions.svg', plot = plot_5,
        path = './R Projects/Emissions-Data-Analysis/Plots')
 
 ### Declining
-decline_plot_df <- modeling_df %>%
+decline_plot_df <- final_df %>%
   filter(declining_emissions_indicator == 'declining')
 
 # Countries with Declining min-max normalized C02 Emissions Average 
@@ -251,17 +251,18 @@ plot_7 <- ggplot(data = decline_plot_df,
 ggsave('declining_normalized_emissions.svg', plot = plot_7,
        path = './R Projects/Emissions-Data-Analysis/Plots')
 
-# Choropleth --------------------------------------------------------------
+# Interactive Choropleth --------------------------------------------------
 
 librarian::shelf(leaflet, geojsonio, htmlwidgets, gganimate, 
                  leaflet.extras2, sf, viridis, gifski)
 
 # create dataframe for choropleth plots
-mapping_df <- modeling_df %>% 
+mapping_df <- final_df %>% 
   # may engineer other features 
   select(country, id = country_code, declining_emissions_indicator,
          slope_estimate_rising, slope_estimate_declining,
-         tot_slope_estimate, per_capita_slope_estimate) %>%
+         tot_slope_estimate, per_capita_slope_estimate,
+         nt_clust) %>%
   mutate(trend = # slope was calculated on normalized total emissions values
            case_when(
              is.na(slope_estimate_rising) == TRUE & is.na(slope_estimate_declining) == TRUE ~ 0,
@@ -269,8 +270,12 @@ mapping_df <- modeling_df %>%
              is.na(slope_estimate_declining) == TRUE ~ slope_estimate_rising),
          binary_trend = case_when(trend < 0 ~ 'declining',
                                   trend > 0 ~ 'rising',
-                                  TRUE ~ 'insignificant trend')
-  ) %>% #'insignificant'
+                                  TRUE ~ 'insignificant trend'),
+         clust_trend = case_when(
+           nt_clust == 'declining' ~ 'declining',
+           nt_clust == 'non_declining' ~ 'non-declining',
+           TRUE ~ NA)
+  ) %>% 
   select(-starts_with('slope')) %>%
   distinct(country, .keep_all = T)
 
@@ -313,12 +318,10 @@ leaflet_map <- function(data, variable, palette, legend_title, map_save_name){
               title = legend_title, position = "bottomright") %>%
     setView(lng = 0, lat = 0, zoom = 1)
   
-  file <- paste0("./R Projects/Emissions-Data-Analysis/Plots/", map_save_name, '.html')
+  file <- paste0("./WulfNovak.github.io/docs/", map_save_name, '.html')
   saveWidget(map_name,
              file = file)
 }
-
-# *** Add units to maps?
 
 ## Choropleth of trend variable
 data <- world_geojson
@@ -357,14 +360,24 @@ map_save_name <- 'per_capita_trend'
 
 leaflet_map(data, variable, palette, legend_title, map_save_name)
 
-### For animated time series
+# Binary rising / declining by kml clustering
+palette <- colorFactor(palette = 'plasma',
+                    domain = world_geojson@data$clust_trend)
+legend_title <- htmltools::HTML("Total Emissions by<br>Longitudinal<br>Clustering")
+variable <- world_geojson$clust_trend
+map_save_name <- 'cluster_binary_trend'
+
+leaflet_map(data, variable, palette, legend_title, map_save_name)
+
+
+# Animated Choropleth -----------------------------------------------------
 
 # prepare dataset
 # Load GeoJSON data for countries
 geojson_url <- "https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json"
 
 animated_map_dt <- read_sf(geojson_url) %>%
-  left_join(modeling_df %>%
+  left_join(final_df %>%
               select(country, id = country_code, year, norm_tot, 
                      declining_emissions_indicator, clust_slope_decline, nt_clust), 
             by = 'id')
@@ -384,20 +397,19 @@ map_base <- animated_map_dt %>%
   theme(axis.title.y = element_text(margin = margin(r = 12, unit = "pt")),
         legend.position = c(.1, .25)) +
   transition_time(year) + 
-  # ease_aes('cubic-in-out') +
-  pause_end(pause_length = 10) +
   labs(
-    title = 'Normalized Country Emissions, for Year {frame_time}',
+    title = 'Normalized Country Emissions: Year {frame_time}',
     subtitle = 'From 2000 to 2022: 1 = highest emissions, 0 = lowest emissions'
   )
 
 animated_map <- animate(map_base, 
                         renderer = gifski_renderer('norm_tot_animation.gif'),
-                        fps = 3,
-                        end_pause = 9)
+                        nframe = (4 * 24),
+                        fps = 4,
+                        end_pause = 8)
 
-anim_save(filename = "./WulfNovak.github.io/docs/norm_tot_animation.gif", 
-          width = 800, height = 600, res = 5000, animation = animated_map) 
+anim_save(filename = "./WulfNovak.github.io/docs/norm_tot_animation.gif",
+          animation = animated_map) 
 
 
 
