@@ -1,14 +1,14 @@
-# Data Analysis on World Emissions Data
+# Visualization of Rising / Declining World Emissions
 
-Project Notes: 
-* Interactive Maps can be seen here: https://wulfnovak.github.io/ - More will be added
-* For the time being, plots from the emissions_eda script are provided in the 'Plots' folder
-* Categorized development indicators are made available in the 'Data' folder
-  * (These may not be used in further analysis due to NAs)
+This projects categorizes countries as having rising or declining emissions from 2000-2022.
+Two methods are used, one which relies on there being a significant linear trend
+over the time period, and another that relies on longitudinal clustering. 
+Both give similar results.
 
-The following is underway:
-* Determining if any development indicators can be used despite lack of coverage
-* Testing the following clustering algorithms to partition countries into
-  rising and declining emissions categories.
-  (GBTM), growth mixture modeling (GMM), and longitudinal k-means (KML)
-* Generalized Linear Mixed Model Study and experimentation.
+Numerous interactive world maps are then generated to visualize 
+countries with rising / declining world emissions.
+
+**Those can be found here:** https://wulfnovak.github.io/
+
+Lastly, plots of world emissions are provided in the 'Plots' folder
+
