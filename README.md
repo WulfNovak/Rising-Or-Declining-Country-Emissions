@@ -1,4 +1,4 @@
-# Visualization of Rising / Declining World Emissions
+# Visualization of Rising / Declining Country Emissions
 
 This project categorizes countries as having rising or declining emissions from 2000-2022.
 Two methods are used, one which relies on there being a significant linear trend
