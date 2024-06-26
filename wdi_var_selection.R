@@ -1,7 +1,7 @@
 # ##############################################################################
 # Author: Wulf Novak
 #
-# Project: 
+# Project: --- tbd
 #
 # Date: 2024-05-24
 #
@@ -9,11 +9,18 @@
 # ------------------------------------------------------------------------------
 # Sections:
 # - Setup
-# - Read in Data
-# - Etc
+# - Variable Selection Based on Completeness
 # ##############################################################################
 
-
+###
+# The following script partially investigates the world development indicator
+# data. Further analysis occurred in prior modeling and data preparation scripts.
+# It was concluded that there was not sufficient data statistically significant
+# models, or, a method of imputation that would avoid spurios results. In the 
+# interest of not extending the scope of this work, I have opted to discontinue
+# working with this data for the time being. Leaving this script here as a vestige
+# of prior work.
+###
 
 # Goal: Select indicator variables with high global data coverage
 #
@@ -24,7 +31,6 @@
 # 3. See what variables fit that criteria.
 # 4. Select subset for emissions modeling.
 # 5. Transform and impute remaining values by country. 
-
 
 # Setup -------------------------------------------------------------------
 
@@ -97,102 +103,10 @@ selected_wdi_vars <- perc_missing %>%
 
 selected_wdi_vars
 
-# Cluster on emissions data OR GDP to classify countries by their output
-
-# don't want to cluster on trend
-# min, mean, max, sd cluster? 
-country_emissions_stats <- emissions_dt_2 %>%
-  #mutate(year = as.numeric(year)) %>%
-  select(country, year, total, per_capita) %>%
-  filter(year >= 2000) %>%
-  group_by(country) %>%
-  mutate(
-    tot_mean = mean(total),
-    tot_sd = sd(total),
-    tot_min = min(total),
-    tot_max = max(total),
-    tot_range = tot_max - tot_min, 
-    # Consider per capita also
-    per_capita_mean = mean(per_capita),
-    per_capita_sd = sd(per_capita),
-    per_capita_min = min(per_capita),
-    per_capita_max = max(per_capita),
-    per_capita_range = per_capita_max - per_capita_min
-  ) %>%
-  ungroup() %>%
-  mutate(across(starts_with(c('tot_', 'per_capita_')),
-                .f = ~scale(.)[ ,1]))
-
-distn_var <- ggplot()
-
-country_emissions_stats_2 <- country_emissions_stats %>%
-  distinct(country, .keep_all = T)
-
-# scale dataframe
-  # select number of clusters
-
-# screeplot 
-
-cluster_range <- 2:7 # max number of clusters possible through trial and error
-
-kmeans_df <- tibble(
-  clusters = cluster_range,
-  kmeans_objects = map(cluster_range, 
-        ~ kmeans(x = country_emissions_stats %>% 
-                   select(starts_with('tot')) %>%
-                   as.matrix(),
-                 centers = ., nstart = 10))
-  )
-
-
-kmeans_df_1 <- country_emissions_stats %>% 
-  select(starts_with('tot'))
-
-kmeans_object_1 <- kmeans(x = as.matrix(kmeans_df_1), centers = 5, nstart = 10)
-kmeans_object_1$withinss
-kmeans_object_1$tot.withinss
-kmeans_object_1$size
-
-# cluster with different variables
-# get the anova scores of the clusters
-# find those that give the most significant difference of the groupings?
-# cluster statistics, visualize
-
-
-# should I include the coal, oil, and gas? (similar energy usage type)
-
-
-# Cluster visualization (using k-means)
-
-librarian::shelf(factoextra)
-
-fviz_cluster(cluster-object, data = ----,
-             #palette = c("#2E9FDF", "#00AFBB", "#E7B800"), 
-             geom = "point",
-             ellipse.type = "convex", 
-             ggtheme = theme_bw()
-             )
-
-# then per variable pooled values per cluster
-
-
-### Clustering methods that will take into account the trend of the data, 
-# and can be used for grouping.
-# (GBTM), growth mixture modeling (GMM), and longitudinal k-means (KML)
-
-
-
-
-
-
-
-
-
-
-# indicator name dist'n of NAs
-# mean, max, 95% CI
-  
-  # dist'n of NAs for each country
+# For all variables, there exists a country that has no observations.
+# In order to produce statistically significant models, considerable imputation
+# would need to take place at the country level. To avoid spurious results, 
+# will no use this dataset for modeling. 
 
 
 
