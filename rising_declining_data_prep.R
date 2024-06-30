@@ -535,7 +535,7 @@ final_df <- emissions_dt_2 %>%
   left_join(per_capita_model_stats, by = 'country') %>%
   left_join(clust_results, by = 'country') %>%
   mutate(country = as.factor(country), 
-         norm_tot = min_max_normalize(total),
+         norm_tot = round(min_max_normalize(total) * 100, 2),
          clust_slope_decline = 
            case_when(declining_emissions_indicator == 'declining' & nt_clust == 'declining' ~ 'declining',
                      TRUE ~ 'non-declining')
