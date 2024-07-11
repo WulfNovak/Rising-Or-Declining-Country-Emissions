@@ -8,7 +8,10 @@ Both give similar results.
 Numerous interactive world maps are then generated to visualize 
 countries with rising / declining world emissions.
 
-**Those can be found here:** https://wulfnovak.github.io/
+**Those can be found here:** 
+https://wulfnovak.github.io/
+ - Simple site to display maps
+ - Animation is known not to scale correctly to page.
 
 Lastly, plots of world emissions are provided in the 'Plots' folder
 
