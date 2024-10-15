@@ -183,14 +183,18 @@ plot_4 <- ggplot(data = rise_plot_df %>% distinct(year, .keep_all = T),
   scale_x_continuous(expand = c(0.01, 0)) + 
   scale_color_viridis_d(option = 'E') +
   theme_minimal() + 
-  theme(axis.text.y = element_text(angle = 37)) +
+  theme(axis.text.y = element_text(color = 'grey', angle = 37),
+        axis.title.x = element_text(color = 'white'),
+        axis.title.y = element_text(color = 'white'),
+        plot.title = element_text(color = 'white'),
+        axis.text.x = element_text(color = 'grey')) +
   labs(
     title = 'Rising: Normalized Global Average C02 Emissions',
     x = 'Year',
     y = 'Normalized Average'
-  )
+  ) 
 
-ggsave('rising_normalized_emissions.svg', plot = plot_4,
+ggsave('inverse_rising_normalized_emissions.svg', plot = plot_4,
        path = './R Projects/Emissions-Data-Analysis/Plots')
 
 # All Countries
@@ -219,19 +223,23 @@ decline_plot_df <- final_df %>%
 # Countries with Declining min-max normalized C02 Emissions Average 
 plot_6 <- ggplot(data = decline_plot_df %>% distinct(year, .keep_all = T), 
        aes(x = year, y = norm_avg_emissions_by_year, color = country)) +
-  geom_area(show.legend = F) +
+  geom_area(fill = 'grey', show.legend = F) +
   scale_y_continuous(limits = c(0:1),  n.breaks = 7) +
   scale_x_continuous(expand = c(0.01, 0)) + 
   scale_color_viridis_d(option = 'E') +
   theme_minimal() + 
-  theme(axis.text.y = element_text(angle = 37)) +
+  theme(axis.text.y = element_text(color = 'grey', angle = 37),
+        axis.title.x = element_text(color = 'white'),
+        axis.title.y = element_text(color = 'white'),
+        plot.title = element_text(color = 'white'),
+        axis.text.x = element_text(color = 'grey')) +
   labs(
     title = 'Declining: Normalized Global Average C02 Emissions',
     x = 'Year',
     y = 'Normalized Average'
   ) # years with economic recessions have lower emissions 
 
-ggsave('avg_declining_normalized_emissions.svg', plot = plot_6,
+ggsave('inverse_avg_declining_normalized_emissions.svg', plot = plot_6,
        path = './R Projects/Emissions-Data-Analysis/Plots')
 
 # All Countries
@@ -249,6 +257,34 @@ plot_7 <- ggplot(data = decline_plot_df,
   )
 
 ggsave('declining_normalized_emissions.svg', plot = plot_7,
+       path = './R Projects/Emissions-Data-Analysis/Plots')
+
+# Combining Rising & Declining Emissions into one plot
+# final_df by declining emissions indicator (remove insignificant trend)
+significant_trends <- final_df %>% filter(declining_emissions_indicator != 'insignificant_trend')
+
+plot_8 <- ggplot(data = significant_trends, 
+       aes(x = year, y = norm_avg_emissions_by_year, color = declining_emissions_indicator)) +
+  geom_line(linewidth = 2,show.legend = T) +
+  scale_y_continuous(limits = c(0:1),  n.breaks = 7) +
+  scale_x_continuous(expand = c(0.01, 0)) + 
+  scale_color_manual(values=c("skyblue", "red")) + 
+  theme_minimal() + 
+  theme(axis.text.y = element_text(color = 'grey', angle = 37),
+        axis.title.x = element_text(color = 'white'),
+        axis.title.y = element_text(color = 'white'),
+        plot.title = element_text(color = 'white'),
+        axis.text.x = element_text(color = 'grey'),
+        legend.title = element_text(color ='white'),
+        legend.text = element_text(color = 'grey')) +
+  labs(
+    title = 'Trajectories: Normalized Global Average C02 Emissions',
+    x = 'Year',
+    y = 'Normalized Average',
+    color = 'Trajectory'
+  ) 
+
+ggsave('inverse_avg_normalized_emissions_trajectories.svg', plot = plot_8,
        path = './R Projects/Emissions-Data-Analysis/Plots')
 
 # Interactive Choropleth --------------------------------------------------
