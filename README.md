@@ -5,7 +5,7 @@ Two methods are used, one which relies on there being a significant linear trend
 over the time period, and another that relies on longitudinal clustering. 
 Both give similar results.
 
-**interactive world maps showing rising / declining emissions:**    
+**Interactive world maps showing rising / declining emissions:**    
 https://wulfnovak.github.io/
  - Simple site to display maps (Coded with HTML / CSS)
  - Animation is known not to scale correctly to page.
