@@ -452,7 +452,7 @@ clust_data_per_capita <- cld(idAll = clust_data_pc %>% pull(country),
 ## cluster on normalized total emissions usage
 set.seed(123)
 clust_norm_tot <- kml(clust_data_norm_tot, nbClusters = 2, 
-                      nbRedrawing = 20, toPlot = "none")
+                      nbRedrawing = 20, toPlot = "traj")
 
 # Selecting cluster with lowest Calinksi Harabatz
 clusters_nt <- getClusters(clust_data_norm_tot, nbCluster = 2, 20)
@@ -460,7 +460,7 @@ clusters_nt <- getClusters(clust_data_norm_tot, nbCluster = 2, 20)
 # cluster on per capita emissions usage
 set.seed(123)
 clust_per_capita <- kml(clust_data_per_capita, nbClusters = 2, 
-                        nbRedrawing = 20, toPlot = "none")
+                        nbRedrawing = 20, toPlot = "traj")
 
 # Selecting cluster with lowest Calinksi Harabatz
 clusters_pc <- getClusters(clust_data_per_capita, nbCluster = 2, 20)
