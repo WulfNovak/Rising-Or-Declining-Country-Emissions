@@ -6,9 +6,9 @@ over the time period, and another that relies on longitudinal clustering.
 Both give similar results.
 
 ### Interactive world maps showing rising / declining emissions:
-https://wulfnovak.github.io/
+[https://wulfnovak.github.io/](https://wulfnovak.github.io/country_emissions/)
  - Simple site to display maps (Coded with HTML / CSS)
- - Animation is known not to scale correctly to page.
+ - Animation, is known not to scale correctly to page.
 
 ### Plots of Rising / Declining Emissions Normalized Average    
 Derived from significant slopes
